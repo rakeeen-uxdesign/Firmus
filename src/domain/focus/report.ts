@@ -6,7 +6,7 @@ export interface FocusReportPoint {
 }
 
 /** Hours of focus per day the charts measure themselves against. */
-const DAILY_TARGET_HOURS = 10;
+export const DAILY_TARGET_HOURS = 10;
 
 /** The target line for a chart: one day's worth per bar, scaled up for weeks and months. */
 export const focusTargetHours = (view: ReportView) => DAILY_TARGET_HOURS * periodMultiplier(view);

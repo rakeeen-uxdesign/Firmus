@@ -16,12 +16,13 @@ import { usePrayer } from '@/data/usePrayer';
 import { getDayMoments, getDayPhase, isFocusNightLocked, isWaterClosed } from '@/domain/devotion/prayer';
 import { getOccasionLine } from '@/domain/devotion/occasion';
 import {
-  daysSinceActive, getAbsenceLine, getLiveFocusLine, getProgressLine, getWeatherLine, pickGreetingLine,
+  daysSinceActive, getAbsenceLine, getAchievement, getLiveFocusLine, getProgressLine, getWeatherLine, pickHeader,
+  type Achievement,
 } from '@/domain/greeting';
+import { AchievementRow } from '@/features/home/components/AchievementRow';
 import { getClockParts, HOME_TIME_ZONE } from '@/domain/clock';
 import { useWeather } from '@/data/useWeather';
 import { isDarkTheme, setTheme } from '@/lib/theme';
-import { useSleepLock } from '@/data/useSleepLock';
 import { useFridayGate } from '@/data/useFridayGate';
 import { PixelDigits } from '@/ui/PixelFocusDisplay';
 import { PixelDateTile } from '@/ui/PixelCalendar';
@@ -328,19 +329,18 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
 
   const [greetingName, setGreetingName] = useState(() => _persistedGreetingName);
 
-  // No more hard lock — the system just calls it out when you're clearly up past Isha.
-  const isSleepTime = useSleepLock();
   const isFriday = now.getDay() === 5;
 
   // Phrases follow the real prayer times (getDayPhase), not fixed clock hours.
-  const getGreeting = (): { before: string; name: string; after: string } => {
+  const getGreeting = (): { before: string; name: string; after: string; achievement: Achievement | null } => {
     // A focus session only reaches `focusMinutes` on Done, so count the running one on top.
     const sessionActive = mode === 'focus' && (pomodoroRunning || pomodoroOvertime);
     const sessionElapsedMin = sessionActive
       ? Math.floor((pomodoroOvertime ? pomodoroTotalSecs + overtime : pomodoroTotalSecs - timeLeft) / 60)
       : 0;
     const phase = getDayPhase(times, now);
-    const before = pickGreetingLine({
+    const { text: before, achievement } = pickHeader({
+      achievement: getAchievement(glasses || 0, focusMinutes + sessionElapsedMin),
       phase,
       liveFocus: sessionActive
         ? getLiveFocusLine({
@@ -351,7 +351,6 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
         : null,
       prayerImminent: !!nextPrayer && nextPrayer.name !== 'Fajr' && nextPrayer.remainingMinutes < 10,
       occasion: getOccasionLine(times, hijriDate, now),
-      isSleepTime,
       absence: getAbsenceLine(daysSinceActive(dailyHistory, todayKey), !glasses && focusMinutes === 0 && !pomodoroRunning),
       weekPattern,
       weather: getWeatherLine(weather, phase),
@@ -362,7 +361,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
       isFriday,
       now,
     });
-    return { before, name: greetingName.toUpperCase(), after: '' };
+    return { before, name: greetingName.toUpperCase(), after: '', achievement };
   };
 
   const greetingParts = getGreeting();
@@ -376,9 +375,10 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   // had their own timeout racing to set the same flag, which could leave it stuck hidden
   // if both fired close together.)
   const fadeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const displayKeyRef = useRef<string>(journalEntry ?? greetingParts.before);
+  const greetingKey = `${greetingParts.achievement?.kind ?? ''}|${greetingParts.before}`;
+  const displayKeyRef = useRef<string>(journalEntry ?? greetingKey);
   useEffect(() => {
-    const nextKey = journalEntry ?? greetingParts.before;
+    const nextKey = journalEntry ?? greetingKey;
     if (displayKeyRef.current === nextKey) return;
     displayKeyRef.current = nextKey;
 
@@ -387,12 +387,12 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
     fadeTimeoutRef.current = setTimeout(() => {
       if (!journalEntry) {
         setDisplayedGreeting(prev => {
-          if (prev.before === greetingParts.before) return prev;
+          if (prev.before === greetingParts.before && prev.achievement?.kind === greetingParts.achievement?.kind) return prev;
           const others = _NAMES.filter(n => n.toUpperCase() !== prev.name);
           const nextName = others[Math.floor(Math.random() * others.length)];
           _persistedGreetingName = nextName;
           setGreetingName(nextName);
-          return { before: greetingParts.before, name: nextName.toUpperCase(), after: '' };
+          return { before: greetingParts.before, name: nextName.toUpperCase(), after: '', achievement: greetingParts.achievement };
         });
       }
       setGreetingVisible(true);
@@ -402,7 +402,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
     return () => {
       if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
     };
-  }, [journalEntry, greetingParts.before]);
+  }, [journalEntry, greetingKey]);
 
   // Day is archived/reset at the real Maghrib time (from the prayer API, refreshed daily)
   // and reopens at the real Fajr time — Water is locked in between. Computed here (not just
@@ -481,6 +481,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
             {journalEntry
               ? <span className="font-light">{journalEntry}</span>
               : <>
+                  {displayedGreeting.achievement && <AchievementRow achievement={displayedGreeting.achievement} />}
                   <span className="font-light">{displayedGreeting.before}</span>
                   <span className="font-medium cursor-pointer" onClick={() => setShowFingerprint(true)} style={{ borderBottom: '1px solid color-mix(in srgb, var(--ink) 20%, transparent)' }}>{displayedGreeting.name}</span>
                   <span className="font-light">{displayedGreeting.after}</span>

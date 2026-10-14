@@ -12,8 +12,8 @@ describe('getOccasionLine', () => {
   });
 
   it('counts down to a prayer in 5-minute steps, starting 15 minutes out', () => {
-    expect(getOccasionLine(times, null, thu('11:48'))).toBe("DHUHR IN 15 MIN ... WRAP WHAT'S IN YOUR HAND ");
-    expect(getOccasionLine(times, null, thu('11:55'))).toBe("DHUHR IN 10 MIN ... WRAP WHAT'S IN YOUR HAND ");
+    expect(getOccasionLine(times, null, thu('11:48'))).toBe("DHUHR IN 15 MIN ... FINISH THAT SENTENCE AND GO ");
+    expect(getOccasionLine(times, null, thu('11:55'))).toBe("DHUHR IN 10 MIN ... FINISH THAT SENTENCE AND GO ");
     expect(getOccasionLine(times, null, thu('11:46'))).toBeNull();
   });
 
@@ -24,8 +24,8 @@ describe('getOccasionLine', () => {
   });
 
   it('counts the final minutes exactly', () => {
-    expect(getOccasionLine(times, null, thu('11:58'))).toBe("DHUHR IN 5 MIN ... WRAP WHAT'S IN YOUR HAND ");
-    expect(getOccasionLine(times, null, thu('12:01'))).toBe("DHUHR IN 2 MIN ... WRAP WHAT'S IN YOUR HAND ");
+    expect(getOccasionLine(times, null, thu('11:58'))).toBe("DHUHR IN 5 MIN ... FINISH THAT SENTENCE AND GO ");
+    expect(getOccasionLine(times, null, thu('12:01'))).toBe("DHUHR IN 2 MIN ... FINISH THAT SENTENCE AND GO ");
   });
 
   it('sunrise adhkar, then Duha', () => {
@@ -37,10 +37,10 @@ describe('getOccasionLine', () => {
   it('Ramadan: suhoor, iftar, taraweeh, last ten nights', () => {
     const r = (day: number) => ({ day, month: 9 });
     expect(getOccasionLine(times, r(5), thu('03:55'))).toContain('SUHOOR');
-    expect(getOccasionLine(times, r(5), thu('18:00'))).toBe('IFTAR IN 30 MIN ... HOLD ON ');
-    expect(getOccasionLine(times, r(5), thu('18:40'))).toContain('IFTAR TIME');
+    expect(getOccasionLine(times, r(5), thu('18:00'))).toBe('IFTAR IN 30 MIN ... THE DATES ARE STARING AT YOU ');
+    expect(getOccasionLine(times, r(5), thu('18:40'))).toContain('BISMILLAH');
     expect(getOccasionLine(times, r(5), thu('20:30'))).toContain('TARAWEEH');
-    expect(getOccasionLine(times, r(25), thu('22:30'))).toContain('LAYLAT AL-QADR');
+    expect(getOccasionLine(times, r(25), thu('22:30'))).toContain('LAST TEN NIGHTS');
   });
 
   it('festivals and white days', () => {

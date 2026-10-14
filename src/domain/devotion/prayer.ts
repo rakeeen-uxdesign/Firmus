@@ -80,7 +80,7 @@ export function isFocusNightLocked(times: PrayerTimes | undefined, now: Date = n
 
 export type DayPhase =
   | 'deepNight' | 'fajrHour' | 'morning' | 'hunting' | 'midday'
-  | 'push' | 'birdsHome' | 'goldenHour' | 'ishaNear' | 'night';
+  | 'push' | 'birdsHome' | 'goldenHour' | 'dusk' | 'ishaNear' | 'night';
 
 const MIN = 60_000;
 
@@ -107,8 +107,9 @@ export function getDayMoments(times: PrayerTimes | undefined, now: Date = new Da
  * typical times for any prayer the map doesn't have yet.
  *
  *   before Fajr → deepNight · Fajr→Sunrise → fajrHour · Sunrise→mid-morning → morning
- *   → Dhuhr → hunting · Dhuhr→+90m → midday · →Asr → push · →Maghrib → birdsHome
- *   Maghrib→Isha−30m → goldenHour · Isha−30m→Isha → ishaNear · after Isha → night
+ *   → Dhuhr → hunting · Dhuhr→+90m → midday · →Asr → push · →Maghrib−60m → birdsHome
+ *   Maghrib−60m→Maghrib → goldenHour (the hour before sunset) · Maghrib→Isha−30m → dusk
+ *   Isha−30m→Isha → ishaNear · after Isha → night
  */
 export function getDayPhase(times: PrayerTimes | undefined, now: Date = new Date()): DayPhase {
   const { fajr, sunrise, dhuhr, asr, maghrib, isha } = getDayMoments(times, now);
@@ -120,8 +121,9 @@ export function getDayPhase(times: PrayerTimes | undefined, now: Date = new Date
   if (t < dhuhr) return 'hunting';
   if (t < dhuhr + 90 * MIN) return 'midday';
   if (t < asr) return 'push';
-  if (t < maghrib) return 'birdsHome';
-  if (t < isha - 30 * MIN) return 'goldenHour';
+  if (t < maghrib - 60 * MIN) return 'birdsHome';
+  if (t < maghrib) return 'goldenHour';
+  if (t < isha - 30 * MIN) return 'dusk';
   if (t < isha) return 'ishaNear';
   return 'night';
 }

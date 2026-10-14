@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { daysSinceActive, getAbsenceLine, getLiveFocusLine, getProgressLine, getWeatherLine, pickGreetingLine, type GreetingInputs } from '@/domain/greeting';
+import { daysSinceActive, getAbsenceLine, getAchievement, getLiveFocusLine, getProgressLine, getWeatherLine, pickGreetingLine, pickHeader, type GreetingInputs } from '@/domain/greeting';
+import { pickPoolLine } from '@/domain/linePool';
 
 describe('daysSinceActive', () => {
   const h = {
@@ -17,7 +18,7 @@ describe('daysSinceActive', () => {
 
 describe('getAbsenceLine', () => {
   it('only after a 2+ day gap and only while today is empty', () => {
-    expect(getAbsenceLine(3, true)).toBe('BACK AFTER 3 DAYS ... EASE BACK IN ');
+    expect(getAbsenceLine(3, true)).toBe('BACK AFTER 3 DAYS ... THE DASHBOARD MISSED YOU ');
     expect(getAbsenceLine(1, true)).toBeNull();
     expect(getAbsenceLine(3, false)).toBeNull();
     expect(getAbsenceLine(null, true)).toBeNull();
@@ -26,8 +27,8 @@ describe('getAbsenceLine', () => {
 
 describe('getProgressLine', () => {
   it('praises real numbers', () => {
-    expect(getProgressLine(12, 0, 'push')).toContain('ALL 12 GLASSES');
-    expect(getProgressLine(2, 135, 'push')).toBe('2H OF FOCUS TODAY ... KEEP GOING ');
+    expect(getProgressLine(2, 0, 'push')).toBeNull();
+    expect(getProgressLine(2, 135, 'push')).toBe('2H OF FOCUS ALREADY ... LOOK AT YOU GO ');
     expect(getProgressLine(8, 0, 'hunting')).toContain('8 GLASSES');
     expect(getProgressLine(8, 0, 'birdsHome')).toBeNull();
     expect(getProgressLine(3, 20, 'push')).toBeNull();
@@ -36,9 +37,9 @@ describe('getProgressLine', () => {
 
 describe('getWeatherLine', () => {
   it('daytime and notable only', () => {
-    expect(getWeatherLine({ temp: 40, code: 0 }, 'midday')).toBe('40° OUT THERE ... DRINK MORE WATER ');
+    expect(getWeatherLine({ temp: 40, code: 0 }, 'midday')).toBe('40° OUTSIDE ... DRINK LIKE A CAMEL ON PURPOSE ');
     expect(getWeatherLine({ temp: 20, code: 61 }, 'push')).toContain('RAIN');
-    expect(getWeatherLine({ temp: 9, code: 0 }, 'morning')).toContain('LAYER UP');
+    expect(getWeatherLine({ temp: 9, code: 0 }, 'morning')).toContain('SWEATER WEATHER');
     expect(getWeatherLine({ temp: 25, code: 0 }, 'midday')).toBeNull();
     expect(getWeatherLine({ temp: 40, code: 0 }, 'night')).toBeNull();
     expect(getWeatherLine(null, 'midday')).toBeNull();
@@ -52,29 +53,29 @@ describe('getLiveFocusLine', () => {
   });
   it('notices the session as it grows, in 30-minute steps', () => {
     expect(getLiveFocusLine({ elapsedMin: 12, remainingMin: 38, savedTodayMin: 0 })).toContain('IN THE ZONE');
-    expect(getLiveFocusLine({ elapsedMin: 34, remainingMin: 26, savedTodayMin: 0 })).toBe('30 MIN IN ... STAY WITH IT ');
-    expect(getLiveFocusLine({ elapsedMin: 61, remainingMin: 29, savedTodayMin: 0 })).toBe('60 MIN IN ... STAY WITH IT ');
+    expect(getLiveFocusLine({ elapsedMin: 34, remainingMin: 26, savedTodayMin: 0 })).toBe('30 MIN DEEP ... THE WORLD CAN WAIT ');
+    expect(getLiveFocusLine({ elapsedMin: 61, remainingMin: 29, savedTodayMin: 0 })).toBe('60 MIN DEEP ... THE WORLD CAN WAIT ');
   });
   it('counts the live session on top of what is already saved today', () => {
-    expect(getLiveFocusLine({ elapsedMin: 40, remainingMin: 20, savedTodayMin: 85 })).toBe('2H OF FOCUS TODAY ... KEEP GOING ');
-    expect(getLiveFocusLine({ elapsedMin: 100, remainingMin: 0, savedTodayMin: 80 })).toBe('3H OF FOCUS TODAY ... KEEP GOING ');
+    expect(getLiveFocusLine({ elapsedMin: 40, remainingMin: 20, savedTodayMin: 85 })).toBe('2H OF FOCUS TODAY ... YOUR PHONE IS CRYING SOMEWHERE ');
+    expect(getLiveFocusLine({ elapsedMin: 100, remainingMin: 0, savedTodayMin: 80 })).toBe('3H OF FOCUS TODAY ... YOUR PHONE IS CRYING SOMEWHERE ');
   });
   it('knows how long is left', () => {
-    expect(getLiveFocusLine({ elapsedMin: 21, remainingMin: 3.2, savedTodayMin: 0 })).toBe('4 MIN LEFT ... FINISH STRONG ');
+    expect(getLiveFocusLine({ elapsedMin: 21, remainingMin: 3.2, savedTodayMin: 0 })).toBe('4 MIN LEFT ... YOU CAN SEE THE FINISH LINE ');
   });
 });
 
 describe('pickGreetingLine', () => {
   const quiet: GreetingInputs = {
-    phase: 'push', liveFocus: null, prayerImminent: false, occasion: null, isSleepTime: false,
+    phase: 'push', liveFocus: null, prayerImminent: false, occasion: null,
     absence: null, weekPattern: 'neutral', weather: null, progress: null,
     glasses: 5, focusMinutes: 30, focusRunning: false, isFriday: false, now: new Date('2026-10-07T14:00:00'),
   };
   const pick = (over: Partial<GreetingInputs>) => pickGreetingLine({ ...quiet, ...over });
 
   it('falls back to the phrase for this part of the day', () => {
-    expect(pick({})).toBe("PUSH WHILE THE SUN'S STILL UP ... ");
-    expect(pick({ phase: 'deepNight' })).toBe('DEEP NIGHT ... REST WELL ');
+    expect(pick({})).toBe(pickPoolLine('push', quiet.now));
+    expect(pick({ phase: 'deepNight' })).toBe(pickPoolLine('deepNight', quiet.now));
   });
 
   it('a running focus session beats an occasion, unless a prayer is minutes away', () => {
@@ -83,33 +84,61 @@ describe('pickGreetingLine', () => {
   });
 
   it('follows the documented priority order', () => {
-    expect(pick({ occasion: 'OCC ', isSleepTime: true })).toBe('OCC ');
-    expect(pick({ isSleepTime: true, absence: 'ABS ' })).toMatch(/ISHA|OWLS|FAJR|SLEEP/);
+    expect(pick({ occasion: 'OCC ', absence: 'ABS ' })).toBe('OCC ');
     expect(pick({ absence: 'ABS ', weather: 'WX ' })).toBe('ABS ');
     expect(pick({ weather: 'WX ', progress: 'PROG ' })).toBe('WX ');
     expect(pick({ progress: 'PROG ', glasses: 1 })).toBe('PROG ');
   });
 
   it('nudges about low water and no focus only in the right phases', () => {
-    expect(pick({ glasses: 1, focusMinutes: 30 })).toBe('RIVER IS LOW TODAY ... DRINK UP ');
-    expect(pick({ glasses: 1, phase: 'morning', focusMinutes: 30 })).toBe('MORNING LOCKED IN ... BUILD IT ');
-    expect(pick({ focusMinutes: 0 })).toBe("HAWK HASN'T MOVED YET ... ");
-    expect(pick({ focusMinutes: 0, focusRunning: true })).toBe("PUSH WHILE THE SUN'S STILL UP ... ");
+    expect(pick({ glasses: 1, focusMinutes: 30 })).toBe('YOUR WATER BOTTLE IS FEELING LONELY ... ');
+    expect(pick({ glasses: 1, phase: 'morning', focusMinutes: 30 })).toBe(pickPoolLine('morning', quiet.now));
+    expect(pick({ focusMinutes: 0 })).toBe("NO FOCUS YET ... THE TIMER IS GETTING BORED ");
+    expect(pick({ focusMinutes: 0, focusRunning: true })).toBe(pickPoolLine('push', quiet.now));
   });
 
   it('the week\'s trend only frames the morning and never buries the rest of the day', () => {
-    expect(pick({ phase: 'morning', weekPattern: 'rising' })).toBe("SOMETHING IS SHIFTING ... DON'T STOP NOW ");
-    expect(pick({ phase: 'hunting', weekPattern: 'fading' })).toBe('HAWK HAS BEEN DRIFTING ... COME BACK ');
-    expect(pick({ phase: 'push', weekPattern: 'rising' })).toBe("PUSH WHILE THE SUN'S STILL UP ... ");
-    expect(pick({ phase: 'night', weekPattern: 'slump' })).toBe('NIGHT SETTLED ... REST WELL ');
+    expect(pick({ phase: 'morning', weekPattern: 'rising' })).toBe("THINGS ARE LOOKING UP ... KEEP THE STREAK WARM ");
+    expect(pick({ phase: 'hunting', weekPattern: 'fading' })).toBe('YOU HAVE BEEN QUIET LATELY ... COME SAY HI ');
+    expect(pick({ phase: 'push', weekPattern: 'rising' })).toBe(pickPoolLine('push', quiet.now));
+    expect(pick({ phase: 'night', weekPattern: 'slump' })).toBe(pickPoolLine('night', quiet.now));
   });
 
   it('the trend yields to anything more specific', () => {
     expect(pick({ phase: 'morning', weekPattern: 'rising', progress: 'PROG ' })).toBe('PROG ');
-    expect(pick({ phase: 'morning', weekPattern: 'rising', isFriday: true })).toBe("JUMU'AH MUBARAK ... READ YOUR KAHF ");
+    expect(pick({ phase: 'morning', weekPattern: 'rising', isFriday: true })).toBe("HAPPY JUMU'AH ... SURAT AL-KAHF IS WAITING ");
   });
 
   it('Friday outranks the plain phrase', () => {
-    expect(pick({ isFriday: true })).toBe("JUMU'AH MUBARAK ... READ YOUR KAHF ");
+    expect(pick({ isFriday: true })).toBe("HAPPY JUMU'AH ... SURAT AL-KAHF IS WAITING ");
+  });
+});
+
+describe('getAchievement', () => {
+  it('12 glasses or 10 hours of focus — water first', () => {
+    expect(getAchievement(12, 0)).toEqual({ kind: 'water', count: 12 });
+    expect(getAchievement(3, 600)).toEqual({ kind: 'focus', count: 10 });
+    expect(getAchievement(12, 600)).toEqual({ kind: 'water', count: 12 });
+    expect(getAchievement(11, 599)).toBeNull();
+  });
+});
+
+describe('pickHeader', () => {
+  const base: GreetingInputs = {
+    phase: 'push', liveFocus: null, prayerImminent: false, occasion: null,
+    absence: null, weekPattern: 'neutral', weather: null, progress: null,
+    glasses: 12, focusMinutes: 30, focusRunning: false, isFriday: false, now: new Date('2026-10-07T14:00:00'),
+  };
+  const water = { kind: 'water', count: 12 } as const;
+
+  it('a reached goal replaces the sentence with vectors and a blessing', () => {
+    const h = pickHeader({ ...base, achievement: water, liveFocus: 'LIVE ', weather: 'WX ' });
+    expect(h.achievement).toEqual(water);
+    expect(h.text).toMatch(/MASHALLAH|ALHAMDULILLAH|BARAKALLAH/);
+  });
+
+  it('an occasion still outranks it, and without a goal it is the plain line', () => {
+    expect(pickHeader({ ...base, achievement: water, occasion: 'EID ' })).toEqual({ text: 'EID ', achievement: null });
+    expect(pickHeader({ ...base, achievement: null }).achievement).toBeNull();
   });
 });
