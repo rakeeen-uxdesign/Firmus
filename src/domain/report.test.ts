@@ -47,4 +47,19 @@ describe('buildPeriodReports', () => {
     expect(year[8].value).toBe(4);    // Sep
     expect(year[9].value).toBe(21);   // Oct: 12 from history + 9 today
   });
+
+  it("today after its close-out: the archived value in history still counts, the zeroed live value adds nothing", () => {
+    const evening = new Date('2026-10-14T21:30:00');
+    const archived = { [key('2026-10-14')]: 8 };
+    const { week, month, year } = buildPeriodReports(archived, 0, evening);
+    expect(week[4].value).toBe(8);     // Wednesday, today
+    expect(month[1].value).toBe(8);    // 14th → Week 2
+    expect(year[9].value).toBe(8);
+  });
+
+  it("today's live value and its archived value add up, never double-count a day", () => {
+    const evening = new Date('2026-10-14T21:30:00');
+    const { week } = buildPeriodReports({ [key('2026-10-14')]: 8 }, 2, evening);
+    expect(week[4].value).toBe(10);
+  });
 });

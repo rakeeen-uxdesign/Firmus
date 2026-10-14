@@ -16,7 +16,11 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 /**
  * Daily totals for the charts: this week (Saturday first), this month in four week-long
  * buckets, and this year by month. `history` is keyed by `Date.toDateString()` and holds
- * finished days; today isn't in it yet, so `todayValue` is added on top.
+ * finished days; `todayValue` is today's live value, added on top.
+ *
+ * Today can have BOTH: a day is archived into `history` at its close-out (Isha for Focus)
+ * and its live counter is zeroed, while the calendar date hasn't changed yet. So today's
+ * total is the live value plus whatever was already archived under today's key.
  */
 export function buildPeriodReports(
   history: Record<string, number>,
@@ -24,6 +28,7 @@ export function buildPeriodReports(
   now: Date = new Date(),
 ): Record<ReportView, ReportPoint[]> {
   const todayKey = now.toDateString();
+  const today = todayValue + (history[todayKey] || 0);
 
   // Week — runs Saturday to Friday.
   const startOfWeek = new Date(now);
@@ -33,7 +38,7 @@ export function buildPeriodReports(
     const day = new Date(startOfWeek);
     day.setDate(startOfWeek.getDate() + i);
     const key = day.toDateString();
-    if (key === todayKey) return { name, value: todayValue };
+    if (key === todayKey) return { name, value: today };
     return { name, value: day > now ? 0 : history[key] || 0 };
   });
 
@@ -46,8 +51,8 @@ export function buildPeriodReports(
     yearTotals[day.getMonth()] += value;
     if (day.getMonth() === now.getMonth()) monthTotals[Math.min(Math.floor((day.getDate() - 1) / 7), 3)] += value;
   }
-  monthTotals[Math.min(Math.floor((now.getDate() - 1) / 7), 3)] += todayValue;
-  yearTotals[now.getMonth()] += todayValue;
+  monthTotals[Math.min(Math.floor((now.getDate() - 1) / 7), 3)] += today;
+  yearTotals[now.getMonth()] += today;
 
   return {
     week,
