@@ -17,6 +17,7 @@ import { useRingAnimation } from '@/ui/useRingAnimation';
 import { WavyRing } from '@/ui/TimerComponents';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
 import { FocusCarousel } from '@/ui/FocusCarousel';
+import { RulerTimer } from '@/ui/RulerTimer';
 import { useFridayGate } from '@/data/useFridayGate';
 import { usePrayer } from '@/data/usePrayer';
 
@@ -237,6 +238,9 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
                         />
                       </div>
                       <PixelDigits mm={pixelMM} ss={pixelSS} color={getTimerColor()} maxWidth="min(52vw, 340px)" />
+                    </div>,
+                    <div className="w-full min-h-[300px] flex items-center justify-center">
+                      <RulerTimer seconds={secs} mm={pixelMM} ss={pixelSS} mode={mode} isOvertime={isOvertime} running={running} />
                     </div>,
                   ]}
                 />

@@ -2,6 +2,7 @@ import React from 'react';
 import { IconPlay as Play } from '@/ui/icons';
 import { DMTimer, WavyRing } from '@/ui/TimerComponents';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
+import { RulerTimer } from '@/ui/RulerTimer';
 import { FocusCarousel } from '@/ui/FocusCarousel';
 import { FocusVector } from '@/features/home/components/visuals';
 
@@ -81,7 +82,10 @@ export const FocusCardBody: React.FC<{
                     width="clamp(84px, 14vw, 128px)"
                   />
                 </div>
-                <PixelDigits mm={mm} ss={ss} color={accent} maxWidth="min(100%, 300px)" />
+                <PixelDigits mm={mm} ss={ss} color={accent} />
+              </div>,
+              <div className="flex items-center justify-center w-full px-1">
+                <RulerTimer seconds={secs} mm={mm} ss={ss} mode={mode} isOvertime={overtime} running={running} />
               </div>,
             ]}
           />
