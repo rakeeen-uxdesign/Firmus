@@ -146,6 +146,12 @@ straight from an icon library — that's what makes "which icons exist", "what
 library they're from", and "sharp vs rounded" each a one-file answer instead
 of a grep across every screen. New icon → add it to `icons.tsx` first.
 
+**Retro** is used in exactly two places, on purpose. Finance › Thndr is dressed as an amber-phosphor
+terminal (the `.retro-crt` panel in `global.css`, with its own local colours — it stays a dark screen in
+both themes). The Focus timer's third face (`ui/RulerTimer.tsx`) is a tick ruler in the Focus accent with
+dot-matrix digits and a glow; its tick/slide logic is `domain/focus/ruler.ts`. The ruler is plain HTML
+moved by one `transform` per animation frame — no filters or SVG masks, which is what keeps it smooth.
+
 A hand-drawn icon-like SVG that can't be a static Hugeicons path set (its own
 component, e.g. the TouchID fingerprint glyph in `TouchIDGate.tsx`, a one-off
 animated scan effect) still imports these same three constants instead of
@@ -155,6 +161,15 @@ stroke unrelated to this system: the Pomodoro focus ring (scales with its own
 size), Recharts `ReferenceLine`/chart internals, the `MonthFingerprint` dot
 weight (encodes a data value, not a fixed style), and `CustomCursor`'s shape
 outline.
+
+## The Discord bot (`backend/`)
+
+Separate package, not part of the web build. `backend/src/features/report/` builds the **daily report**
+(20:00 Cairo, `bot.js`): `collect.js` reads the dashboard values from Firestore, `data.js` turns them into
+the report (pure — the finance, focus and subscription rules are ported by hand from `src/domain/`, and
+tested from the root with `npm run test:run`), `render.js` draws the PDF, `send.js` posts it. Try it without
+sending anything: `npm run report:preview` (writes a PDF to the temp folder); `npm run report:send` sends it
+now. Anything in `data.js` that mirrors `src/domain/` must be changed in both places.
 
 ## Testing & commands
 
@@ -186,3 +201,5 @@ speculatively.
   been extracted to `domain/` yet — it's tightly coupled to Firestore setters and
   needs care to pull apart without changing timing.
 - `features/fitness/` calorie math hasn't been extracted yet.
+- The docs above still mention `features/calendar` and `features/fitness`; those screens no longer exist
+  (the app is Home, Water, Focus, Finance + auth).

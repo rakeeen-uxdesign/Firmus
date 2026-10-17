@@ -5,13 +5,16 @@
   "main": "bot.js",
   "type": "module",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot.js",
+    "report:preview": "node scripts/report-preview.js",
+    "report:send": "node scripts/report-send.js"
   },
   "dependencies": {
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
     "express": "^4.22.2",
     "firebase-admin": "^12.7.0",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "pdfkit": "^0.15.2"
   }
 }

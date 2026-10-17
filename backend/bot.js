@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerCommands } from './src/discord/commands.js';
 import { routeInteraction } from './src/discord/router.js';
+import { sendDailyReport } from './src/features/report/send.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SUBS_FILE = path.join(__dirname, 'subscriptions.json');
@@ -118,6 +119,16 @@ client.once('clientReady', async () => {
       console.error("Failed to run subscription reminder cron:", error);
     }
   });
+
+  // Daily report at 20:00 Cairo — a summary card plus the full PDF, in the dashboard channel.
+  cron.schedule('0 20 * * *', async () => {
+    try {
+      await sendDailyReport(client, CHANNEL_ID, getGoldPrices);
+    } catch (error) {
+      console.error('❌ Failed to send the daily report:', error);
+    }
+  }, { timezone: 'Africa/Cairo' });
+  console.log('📄 Daily report scheduled (20:00 Cairo)!');
 
   // Re-seed subscriptions from Firebase every 30 minutes to stay fresh
   cron.schedule('*/30 * * * *', async () => {
