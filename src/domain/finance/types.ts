@@ -34,6 +34,21 @@ export interface Subscription {
   startDate?: string;     // "YYYY-MM-DD"
 }
 
+/** One reading of the Thndr portfolio's value, typed in by hand (Thndr has no API to read it from). */
+/** What the money inside Thndr is split across. */
+export type ThndrPart = 'clouds' | 'gold' | 'funds';
+export type ThndrParts = Record<ThndrPart, number>;
+
+export interface ThndrEntry {
+  id: string;
+  /** Portfolio value in EGP at that moment — the sum of `parts` when they're recorded. */
+  value: number;
+  /** How that value was split. Absent on readings saved before the split existed. */
+  parts?: ThndrParts;
+  timestamp: string;      // ISO
+  note?: string;
+}
+
 export interface FinanceLog {
   id: string;
   /** `assign` moves money between buckets only (the bank doesn't change); its amount is negative when taking out. */

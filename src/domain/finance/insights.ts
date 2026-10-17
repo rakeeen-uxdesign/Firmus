@@ -11,9 +11,9 @@ function ranked<K extends string>(values: Record<K, number>): Array<{ key: K; ba
 
 export const rankBanks = (banks: FinanceBanks) => ranked({ ...EMPTY_BANKS, ...banks });
 
-/** Buckets split the same money, so this ranks what's allocated; Future also counts the gold held. */
-export const rankBuckets = (buckets: FinanceBuckets, goldValue: number) =>
-  ranked({ ...EMPTY_BUCKETS, ...buckets, mustaqbal: (buckets.mustaqbal || 0) + goldValue });
+/** Buckets split the same money, so this ranks what's allocated; Future also counts the gold and Thndr held (`heldValue`). */
+export const rankBuckets = (buckets: FinanceBuckets, heldValue: number) =>
+  ranked({ ...EMPTY_BUCKETS, ...buckets, mustaqbal: (buckets.mustaqbal || 0) + heldValue });
 
 export const sumOf = (values: FinanceBanks | FinanceBuckets) => (Object.values(values) as number[]).reduce((a, b) => a + (b || 0), 0);
 

@@ -353,3 +353,65 @@ body.dark-theme [class*="border-ink"] {
 *, *::before, *::after {
   cursor: none !important;
 }
+
+/* === Retro CRT panel (Finance › Thndr) ===
+   A self-contained amber-phosphor terminal: scanlines, a slow sweep, a glow on the text.
+   Colours are local to the panel on purpose — it stays a dark screen in light and dark mode. */
+.retro-crt {
+  --crt-bg: #0f0a04;
+  --crt-fg: #ffb84d;
+  --crt-dim: #8c5f22;
+  --crt-edge: rgb(255 184 77 / 0.32);   /* the screen's outer border: a faint line */
+  --crt-rule: rgb(255 184 77 / 0.16);   /* hairlines inside the screen: fainter still */
+  --crt-warn: #ff6b4a;
+  position: relative;
+  overflow: hidden;
+  background: var(--crt-bg);
+  color: var(--crt-fg);
+  border: 1px solid var(--crt-edge);
+  border-radius: 0;
+  text-shadow: 0 0 6px rgb(255 184 77 / 0.42);
+  font-family: var(--font-mono);
+  animation: crtFlicker 6s infinite;
+}
+.retro-crt::before { /* scanlines */
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.3) 0 1px, transparent 1px 3px);
+}
+.retro-crt::after { /* a slow bright band travelling down the screen, plus a soft vignette */
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 0%, rgb(255 184 77 / 0.07) 50%, transparent 100%) 0 -30% / 100% 30% no-repeat,
+    radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.45) 100%);
+  animation: crtSweep 7s linear infinite;
+}
+.retro-crt > * { position: relative; z-index: 1; }
+.retro-crt .crt-dim { color: var(--crt-dim); text-shadow: none; }
+.retro-crt .crt-warn { color: var(--crt-warn); text-shadow: 0 0 6px rgb(255 107 74 / 0.42); }
+.retro-crt .crt-cursor { display: inline-block; width: 0.55em; height: 1em; margin-left: 0.15em; vertical-align: -0.1em; background: var(--crt-fg); animation: crtBlink 1.05s steps(1) infinite; }
+.retro-crt .crt-rule { border-color: var(--crt-rule); }
+
+@keyframes crtBlink { 50% { opacity: 0; } }
+@keyframes crtSweep { to { background-position: 0 130%, 0 0; } }
+@keyframes crtFlicker {
+  0%, 94%, 100% { opacity: 1; }
+  95% { opacity: 0.93; }
+  96% { opacity: 1; }
+  97% { opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .retro-crt, .retro-crt::after, .retro-crt .crt-cursor { animation: none; }
+}
+
+/* === Focus ruler face === it takes the same accents as the other Focus faces (green to focus, teal on a break, gold in overtime) */
+.ruler-face { --ruler-tone: var(--pomo-focus); }
+.ruler-face.ruler-break { --ruler-tone: var(--pomo-break); }
+.ruler-face.ruler-overtime { --ruler-tone: var(--pomo-overtime); }

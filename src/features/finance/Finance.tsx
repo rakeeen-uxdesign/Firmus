@@ -12,6 +12,8 @@ import type { Debt } from '@/domain/finance/types';
 import { BANK_LABELS, BUCKET_META } from '@/features/finance/components/visuals';
 import { OverviewTab, type FinanceTab } from '@/features/finance/components/OverviewTab';
 import { GoldTab } from '@/features/finance/components/GoldTab';
+import { ThndrTab } from '@/features/finance/components/ThndrTab';
+import { latestThndrValue } from '@/domain/finance/thndr';
 import { SubscriptionsTab } from '@/features/finance/components/SubscriptionsTab';
 import { DebtModal, DebtsTab } from '@/features/finance/components/DebtsTab';
 import { LogsTab } from '@/features/finance/components/LogsTab';
@@ -23,13 +25,14 @@ interface FinanceProps {
   navigate: (to: string) => void;
 }
 
-const TAB_OPTIONS = (['overview', 'gold', 'subscriptions', 'debts', 'logs'] as const).map((value) => ({ value }));
+const TAB_OPTIONS = (['overview', 'gold', 'thndr', 'subscriptions', 'debts', 'logs'] as const).map((value) => ({ value }));
 
 export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   const {
     banks, buckets, setBuckets,
     splitTemplate, setSplitTemplate,
     gold, setGold,
+    thndr, setThndr,
     subscriptions, setSubscriptions,
     debts, setDebts,
     updateBankBalance, updateBucketBalance,
@@ -132,6 +135,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
             buckets={buckets}
             gold={gold ?? []}
             goldPrices={goldPrices}
+            thndrValue={latestThndrValue(thndr ?? [])}
             subscriptions={subscriptions ?? []}
             debts={debts ?? []}
             privacyMode={privacyMode}
@@ -144,6 +148,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         {tab === 'gold' && (
           <GoldTab gold={gold ?? []} setGold={setGold} prices={goldPrices} loadingPrices={loadingPrices} privacyMode={privacyMode} />
         )}
+        {tab === 'thndr' && <ThndrTab entries={thndr ?? []} setEntries={setThndr} privacyMode={privacyMode} />}
         {tab === 'subscriptions' && (
           <SubscriptionsTab subscriptions={subscriptions ?? []} setSubscriptions={setSubscriptions} privacyMode={privacyMode} />
         )}

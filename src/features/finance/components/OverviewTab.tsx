@@ -9,7 +9,7 @@ import type { MoveDraft } from '@/features/finance/components/MoneyMoveModal';
 import { ActionButton } from '@/features/finance/components/ActionButton';
 import { sectionLabel } from '@/features/finance/components/labels';
 
-export type FinanceTab = 'overview' | 'gold' | 'subscriptions' | 'debts' | 'logs';
+export type FinanceTab = 'overview' | 'gold' | 'thndr' | 'subscriptions' | 'debts' | 'logs';
 
 /** A quiet summary in the side column that opens its tab. */
 const Glance: React.FC<{ title: string; to: FinanceTab; onOpen: (tab: FinanceTab) => void; children: React.ReactNode }> = ({ title, to, onOpen, children }) => (
@@ -32,6 +32,8 @@ export const OverviewTab: React.FC<{
   buckets: FinanceBuckets;
   gold: GoldAsset[];
   goldPrices: GoldPrices | null;
+  /** Latest Thndr reading (0 when none yet). */
+  thndrValue: number;
   subscriptions: Subscription[];
   debts: Debt[];
   privacyMode: boolean;
@@ -40,10 +42,10 @@ export const OverviewTab: React.FC<{
   onMove: (draft: MoveDraft) => void;
   onSplit: (mode: 'income' | 'assign') => void;
   onOpenTab: (tab: FinanceTab) => void;
-}> = ({ banks, buckets, gold, goldPrices, subscriptions, debts, privacyMode, free, onMove, onSplit, onOpenTab }) => {
+}> = ({ banks, buckets, gold, goldPrices, thndrValue, subscriptions, debts, privacyMode, free, onMove, onSplit, onOpenTab }) => {
   const goldValue = goldSummary(gold, goldPrices).value;
   const banksRanked = rankBanks(banks);
-  const bucketsRanked = rankBuckets(buckets, goldValue);
+  const bucketsRanked = rankBuckets(buckets, goldValue + thndrValue);
   const upNext = upcomingRenewals(subscriptions, new Date(), 3);
   const iOwe = debts.filter((d) => d.type === 'owed_by_me').sort((a, b) => b.amount - a.amount);
   const masked = (value: React.ReactNode, className = '', align?: 'start' | 'end') => (
@@ -103,10 +105,11 @@ export const OverviewTab: React.FC<{
                   <div>
                     <p className="font-sans-main text-[11px] font-black uppercase tracking-widest text-ink/60">{BUCKET_META[key].en}</p>
                     {masked(formatEGP(balance), 'font-mono-main text-lg font-black tracking-tight block mt-1.5')}
-                    {key === 'mustaqbal' && goldValue > 0 && (
+                    {key === 'mustaqbal' && (goldValue > 0 || thndrValue > 0) && (
                       <div className="font-mono-main text-[10px] mt-3 space-y-1 text-ink/40">
                         <p className="flex justify-between gap-3"><span>Cash</span>{masked(formatEGP(buckets.mustaqbal || 0), '', 'end')}</p>
                         <p className="flex justify-between gap-3"><span>Gold</span>{masked(formatEGP(goldValue), '', 'end')}</p>
+                        <p className="flex justify-between gap-3"><span>Thndr</span>{masked(formatEGP(thndrValue), '', 'end')}</p>
                       </div>
                     )}
                   </div>
