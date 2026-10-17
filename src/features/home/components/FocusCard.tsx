@@ -82,7 +82,7 @@ export const FocusCardBody: React.FC<{
                     width="clamp(84px, 14vw, 128px)"
                   />
                 </div>
-                <PixelDigits mm={mm} ss={ss} color={accent} />
+                <PixelDigits mm={mm} ss={ss} color={accent} maxWidth="min(100%, 300px)" />
               </div>,
               <div className="flex items-center justify-center w-full px-1">
                 <RulerTimer seconds={secs} mm={mm} ss={ss} mode={mode} isOvertime={overtime} running={running} />
