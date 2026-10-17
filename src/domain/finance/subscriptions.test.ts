@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nextRenewal, subMatchesFilter } from '@/domain/finance/subscriptions';
+import { monthlySubscriptionCost, nextRenewal, shareAfterSubscriptions, subMatchesFilter } from '@/domain/finance/subscriptions';
 import type { Subscription } from '@/domain/finance/types';
 
 const base: Subscription = {
@@ -49,5 +49,19 @@ describe('subMatchesFilter', () => {
   it('year: interval ≥ 12', () => {
     expect(subMatchesFilter({ ...base, intervalMonths: 12 }, 'year', now)).toBe(true);
     expect(subMatchesFilter({ ...base, intervalMonths: 1 }, 'year', now)).toBe(false);
+  });
+});
+
+describe('monthlySubscriptionCost / shareAfterSubscriptions', () => {
+  const sub = (cost: number, intervalMonths: number) => ({ id: `${cost}-${intervalMonths}`, name: 'x', cost, renewalDay: 1, reminderTime: '09:00', bank: 'CIB', intervalMonths });
+
+  it('spreads each plan over its billing cycle', () => {
+    expect(monthlySubscriptionCost([sub(100, 1), sub(300, 3), sub(1200, 12)])).toBe(300);
+  });
+
+  it('subtracts that from the salary, and can go negative', () => {
+    expect(shareAfterSubscriptions(7000, [sub(1000, 1)])).toBe(6000);
+    expect(shareAfterSubscriptions(500, [sub(1000, 1)])).toBe(-500);
+    expect(shareAfterSubscriptions(7000, [])).toBe(7000);
   });
 });

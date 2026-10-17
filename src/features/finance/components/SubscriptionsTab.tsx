@@ -3,7 +3,8 @@ import { FilterSelect } from '@/ui/FilterSelect';
 import { AppModal } from '@/ui/AppModal';
 import { formatEGP } from '@/domain/finance/money';
 import { removeById, upsertById } from '@/domain/finance/collections';
-import { subMatchesFilter, type SubFilter } from '@/domain/finance/subscriptions';
+import { shareAfterSubscriptions, subMatchesFilter, type SubFilter } from '@/domain/finance/subscriptions';
+import { MONTHLY_SALARY_EGP } from '@/domain/finance/defaults';
 import { countdownLabel, upcomingRenewals } from '@/domain/finance/insights';
 import type { FinanceBanks, Subscription } from '@/domain/finance/types';
 import { BANK_KEYS, BANK_LABELS, MaskedValue } from '@/features/finance/components/visuals';
@@ -107,19 +108,33 @@ export const SubscriptionsTab: React.FC<{
     ? `${inWindow.length} due today`
     : `${inWindow.length} ${filter === 'month' ? 'monthly' : 'yearly'} of ${subscriptions.length}`;
 
+  const share = shareAfterSubscriptions(MONTHLY_SALARY_EGP, subscriptions);
+
   const save = (sub: Subscription) => setSubscriptions(upsertById(subscriptions, sub));
 
   return (
     <div className="space-y-6">
       {subscriptions.length > 0 && (
-        <div className="brutalist-card no-lift bg-paper-dark p-6 flex items-baseline justify-between">
-          <div>
-            <p className={`${captionLabel} mb-1`}>{totalLabel}</p>
-            <p className="font-mono-main text-3xl font-black">
-              <MaskedValue disabled={!privacyMode}>{formatEGP(total)}</MaskedValue>
-            </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="brutalist-card no-lift bg-paper-dark p-6 flex items-baseline justify-between">
+            <div>
+              <p className={`${captionLabel} mb-1`}>{totalLabel}</p>
+              <p className="font-mono-main text-3xl font-black">
+                <MaskedValue disabled={!privacyMode}>{formatEGP(total)}</MaskedValue>
+              </p>
+            </div>
+            <p className="font-mono-main text-xs text-ink/25">{countLabel}</p>
           </div>
-          <p className="font-mono-main text-xs text-ink/25">{countLabel}</p>
+
+          <div className="brutalist-card no-lift bg-paper-dark p-6 flex items-baseline justify-between">
+            <div>
+              <p className={`${captionLabel} mb-1`}>Hamed's Share</p>
+              <p className="font-mono-main text-3xl font-black" style={share < 0 ? { color: 'var(--rust)' } : undefined}>
+                <MaskedValue disabled={!privacyMode}>{formatEGP(share)}</MaskedValue>
+              </p>
+            </div>
+            <p className="font-mono-main text-xs text-ink/25">{formatEGP(MONTHLY_SALARY_EGP)} − subs / mo</p>
+          </div>
         </div>
       )}
 
