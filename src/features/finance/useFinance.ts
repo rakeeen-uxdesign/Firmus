@@ -22,12 +22,17 @@ export function useFinance() {
   // How the last income was split (each bucket's share, in percent) — the next one starts from it.
   const [splitTemplate, setSplitTemplate] = useFirebaseSync<Percentages>('finance_split_template', {});
 
-  // Buckets saved under an older set of keys can't be mapped onto the current five, so reset them.
+  // A bucket removed from BUCKET_ORDER (e.g. Mariam) can still be sitting in an older stored
+  // doc — strip just that stray key, keeping every real balance intact. This used to reset
+  // the WHOLE record to EMPTY_BUCKETS the moment any one unrecognized key showed up, which
+  // would have zeroed every other bucket's real balance along with it.
   useEffect(() => {
     if (!buckets) return;
-    const hasOldKey = Object.keys(buckets).some(k => !VALID_BUCKET_KEYS.has(k));
-    if (hasOldKey) {
-      setBuckets(EMPTY_BUCKETS);
+    const staleKeys = Object.keys(buckets).filter(k => !VALID_BUCKET_KEYS.has(k));
+    if (staleKeys.length > 0) {
+      const cleaned = { ...buckets };
+      for (const k of staleKeys) delete (cleaned as Record<string, number>)[k];
+      setBuckets({ ...EMPTY_BUCKETS, ...cleaned });
     }
   }, [buckets]);
 

@@ -254,26 +254,6 @@ const BasmalaVector: React.FC<{ balance: number }> = ({ balance }) => {
   );
 };
 
-// Mariam — heart (personal, dear to you)
-const MariamVector: React.FC<{ balance: number }> = ({ balance }) => {
-  const d = balanceToDuration(balance);
-  const dots: [number, number, number][] = [
-    [12, 7,  0   ],
-    [8,  4,  0.08], [5,  6,  0.16], [4,  10, 0.24],
-    [6,  14, 0.32], [9,  18, 0.40], [12, 21, 0.48],
-    [15, 18, 0.56], [18, 14, 0.64], [20, 10, 0.72],
-    [19, 6,  0.80], [16, 4,  0.88],
-  ];
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-ink">
-      {dots.map(([cx, cy, frac], i) => (
-        <circle key={i} cx={cx} cy={cy} r={i === 0 ? 1.4 : 1.1}
-          style={{ animation: `vectorFade ${d}s ease-in-out infinite`, animationDelay: `${frac * d}s` }} />
-      ))}
-    </svg>
-  );
-};
-
 // Sadaqa — ascending sprout / rising (charity = growth)
 const SadaqaVector: React.FC<{ balance: number }> = ({ balance }) => {
   const d = balanceToDuration(balance);
@@ -299,7 +279,6 @@ export const BUCKET_VECTORS: Record<keyof FinanceBuckets, React.ComponentType<{ 
   mustaqbal: MustaqbalVector,
   tawarr2:   Tawarr2Vector,
   basmala:   BasmalaVector,
-  mariam:    MariamVector,
   sadaqa:    SadaqaVector,
 };
 
@@ -307,6 +286,5 @@ export const BUCKET_META: Record<keyof FinanceBuckets, { en: string; accent: str
   tawarr2:  { en: "Tawarru'", accent: 'var(--rust)' },
   mustaqbal:{ en: 'Future',   accent: 'var(--forest)' },
   basmala:  { en: 'Basmala',  accent: 'var(--ink-faded)' },
-  mariam:   { en: 'Mariam',   accent: 'var(--ink-faded)' },
   sadaqa:   { en: 'Sadaqa',   accent: '#B89228' },
 };

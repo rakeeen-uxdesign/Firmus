@@ -50,7 +50,7 @@ describe('buildReport', () => {
     pomodoroWeek: Array.from({ length: 7 }, () => ({ sessions: 0, minutes: 0 })),
     pomodoroHistory: { [key(17)]: { sessions: 5, minutes: 610 } },
     banks: { cib: 1000, ahly_main: 2000, ahly_meeza: 0, bm: 500 },
-    buckets: { mustaqbal: 1500, tawarr2: 500, basmala: 0, mariam: 0, sadaqa: 0 },
+    buckets: { mustaqbal: 1500, tawarr2: 500, basmala: 0, sadaqa: 0, mariam: 250 },
     gold: [{ id: 'g', quantity: 10, carat: 21 }],
     thndr: [
       { id: 'a', value: 10000, timestamp: '2026-10-03T10:00:00.000Z', parts: { clouds: 6000, gold: 3000, funds: 1000 } },
@@ -71,6 +71,7 @@ describe('buildReport', () => {
   });
   it('banks, buckets and free money', () => {
     expect(report.finance.banksTotal).toBe(3500);
+    expect(report.finance.bucketsTotal).toBe(2000);
     expect(report.finance.free).toBe(1500);
   });
   it('the future fund is cash + gold + Thndr', () => {

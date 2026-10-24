@@ -1,9 +1,8 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { usePomodoro } from '@/data/usePomodoro';
-import { useRingAnimation } from '@/ui/useRingAnimation';
 import { formatTime } from '@/lib/format';
-import { WavyRing } from '@/ui/TimerComponents';
+import { PixelClock } from '@/ui/PixelFocusDisplay';
 
 interface FloatingTimerProps {
   onNavigate: () => void;
@@ -14,20 +13,14 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({ onNavigate }) => {
   const { running, isOvertime, mode, timeLeft, overtime, focusDuration, breakDuration } = usePomodoro();
   const location = useLocation();
 
-  // ── All hooks MUST be called before any early returns (Rules of Hooks) ──
   const total = mode === 'focus' ? focusDuration * 60 : breakDuration * 60;
-  const pct = isOvertime ? 100 : Math.max(0, ((total - timeLeft) / total) * 100);
-  // Same shared hook as Home.tsx and Pomodoro.tsx — otherwise this ring drifts back
-  // to a frame-rate-dependent wave speed and never gets the slow self-rotation.
-  const { phase, rotation } = useRingAnimation({ running, isOvertime, pct, totalSecs: total });
+  const elapsedSeconds = isOvertime ? total + overtime : total - timeLeft;
 
-  // Derived values (safe to compute before early return)
   const isOnPomodoro = location.pathname.includes('pomodoro');
   const displayTime = isOvertime ? `+${formatTime(overtime)}` : formatTime(timeLeft);
-  const waves = mode === 'focus' ? focusDuration : breakDuration;
 
   const isOnHome = location.pathname === '/' || location.pathname === '' || location.pathname.endsWith('Rakeeen-Home') || location.pathname.endsWith('Rakeeen-Home/');
-  
+
   // Don't render if timer not active or already on pomodoro page
   if ((!running && !isOvertime) || isOnPomodoro) return null;
 
@@ -40,20 +33,17 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({ onNavigate }) => {
       className="fixed bottom-8 right-8 z-50 flex items-center justify-center transition-transform duration-300 hover:scale-105 hover:-translate-y-1 outline-none group bg-transparent rounded-full w-[170px] h-[170px] cursor-pointer shadow-none border-none"
       title="Return to Pomodoro"
     >
-      <div className="relative w-full h-full flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center justify-center p-2">
-          <WavyRing pct={pct} phase={phase} mode={mode} isOvertime={isOvertime} size={150} waves={waves} rotation={rotation} />
-        </div>
-        
-        {/* Center content */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none translate-y-0.5">
-          <span className="text-3xl font-black transition-colors duration-500 tabular-nums leading-none text-ink">
-            {displayTime}
-          </span>
-          <span className="text-[10px] tracking-[0.2em] font-black text-ink/30 uppercase mt-2">
-            {isOvertime ? 'Overtime' : mode}
-          </span>
-        </div>
+      <div className="relative w-full h-full flex flex-col items-center justify-center gap-3">
+        <PixelClock
+          elapsedSeconds={elapsedSeconds}
+          mode={mode}
+          running={running}
+          isOvertime={isOvertime}
+          width="104px"
+        />
+        <span className="text-[11px] font-black transition-colors duration-500 tabular-nums leading-none text-ink">
+          {displayTime}
+        </span>
       </div>
     </button>
   );

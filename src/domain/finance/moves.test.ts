@@ -3,7 +3,7 @@ import { applyMove, moveError, urgentDebtFor, type MoneyMove } from '@/domain/fi
 import type { FinanceBanks, FinanceBuckets } from '@/domain/finance/types';
 
 const banks: FinanceBanks = { cib: 1000, ahly_main: 500, ahly_meeza: 0, bm: 250 };
-const buckets: FinanceBuckets = { tawarr2: 300, mustaqbal: 800, basmala: 0, mariam: 0, sadaqa: 50 };
+const buckets: FinanceBuckets = { tawarr2: 300, mustaqbal: 800, basmala: 0, sadaqa: 50 };
 const move = (over: Partial<MoneyMove>): MoneyMove => ({ type: 'deposit', amount: 100, bank: 'cib', bucket: null, ...over });
 
 describe('applyMove', () => {

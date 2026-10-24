@@ -96,7 +96,9 @@ export const OverviewTab: React.FC<{
       <section className="order-3 lg:col-start-1 lg:row-start-3 lg:col-span-2">
         <p className={`${sectionLabel} mb-4`}>Buckets</p>
         <div className="brutalist-card no-lift bg-paper-dark overflow-hidden !p-0">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-ink/12">
+          {/* md:grid-cols-4 matches BUCKET_ORDER's current length (4) — Tailwind needs a literal
+              class, so bump this by hand if a bucket is ever added or removed again. */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-ink/12">
             {bucketsRanked.map(({ key, balance }) => {
               const Vector = BUCKET_VECTORS[key];
               return (
@@ -136,7 +138,7 @@ export const OverviewTab: React.FC<{
       <div className="order-4 lg:col-start-3 lg:row-start-1">
         <Glance title="Up next" to="subscriptions" onOpen={onOpenTab}>
           {upNext.length === 0 ? (
-            <p className="font-mono-main text-xs text-ink/25">No subscriptions yet.</p>
+            <p className="font-mono-main text-xs text-ink/25">No Payit yet.</p>
           ) : (
             <ul className="space-y-5">
               {upNext.map(({ sub, daysLeft }) => (

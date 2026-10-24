@@ -25,7 +25,10 @@ interface FinanceProps {
   navigate: (to: string) => void;
 }
 
-const TAB_OPTIONS = (['overview', 'gold', 'thndr', 'subscriptions', 'debts', 'logs'] as const).map((value) => ({ value }));
+// Displayed as "Payit" — the tab id itself stays 'subscriptions' (it's just the UI label that changed).
+const TAB_LABELS: Partial<Record<FinanceTab, string>> = { subscriptions: 'Payit' };
+const TAB_OPTIONS = (['overview', 'gold', 'thndr', 'subscriptions', 'debts', 'logs'] as const)
+  .map((value) => ({ value, label: TAB_LABELS[value] }));
 
 export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   const {
@@ -119,7 +122,11 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
             <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] font-bold text-ink/60">Finance</span>
           </div>
 
-          <PrivacyToggle privateMode={privacyMode} onToggle={() => setPrivacyMode((p) => !p)} />
+          <PrivacyToggle
+            privateMode={privacyMode}
+            onToggle={() => setPrivacyMode((p) => !p)}
+            disabled={tab === 'thndr'}
+          />
         </div>
 
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -148,7 +155,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         {tab === 'gold' && (
           <GoldTab gold={gold ?? []} setGold={setGold} prices={goldPrices} loadingPrices={loadingPrices} privacyMode={privacyMode} />
         )}
-        {tab === 'thndr' && <ThndrTab entries={thndr ?? []} setEntries={setThndr} privacyMode={privacyMode} />}
+        {tab === 'thndr' && <ThndrTab entries={thndr ?? []} setEntries={setThndr} />}
         {tab === 'subscriptions' && (
           <SubscriptionsTab subscriptions={subscriptions ?? []} setSubscriptions={setSubscriptions} privacyMode={privacyMode} />
         )}

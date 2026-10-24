@@ -120,13 +120,19 @@ export interface GreetingInputs {
  * (low water, no focus), Friday, the week's trend (mornings only, so it never buries
  * the rest of the day), and finally today's line from the rotating pool for this part of the day
  * (love, design & art, nature — see `pickPoolLine`).
+ *
+ * A focus session otherwise wins outright for as long as it runs — for someone who's at
+ * their desk focusing most of the day, that's literally every line but one, forever. Once
+ * every few minutes it steps aside so everything below actually gets a turn, falling
+ * straight back to the focus line itself if nothing else has anything to say that minute.
  */
 export function pickGreetingLine(g: GreetingInputs): string {
   const waterLow = g.glasses < 3 && WATER_NUDGE_PHASES.includes(g.phase);
   const noFocus = g.focusMinutes === 0 && !g.focusRunning &&
     (g.phase === 'push' || g.phase === 'birdsHome' || g.phase === 'goldenHour' || g.phase === 'dusk');
+  const yieldLiveFocus = g.now.getMinutes() % 5 === 0;
 
-  if (g.liveFocus && !g.prayerImminent) return g.liveFocus;
+  if (g.liveFocus && !g.prayerImminent && !yieldLiveFocus) return g.liveFocus;
   if (g.occasion) return g.occasion;
   if (g.absence) return g.absence;
   if (g.weather) return g.weather;
@@ -135,6 +141,7 @@ export function pickGreetingLine(g: GreetingInputs): string {
   if (noFocus) return "NO FOCUS YET ... THE TIMER IS GETTING BORED ";
   if (g.isFriday) return "HAPPY JUMU'AH ... SURAT AL-KAHF IS WAITING ";
   if (TREND_PHASES.includes(g.phase) && WEEK_PATTERN_LINES[g.weekPattern]) return WEEK_PATTERN_LINES[g.weekPattern];
+  if (g.liveFocus && !g.prayerImminent) return g.liveFocus;
   return pickPoolLine(g.phase, g.now);
 }
 

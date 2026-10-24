@@ -7,7 +7,7 @@ export type Allocations = Partial<Record<keyof FinanceBuckets, number>>;
 /** Each bucket's share of an income, 0–100. */
 export type Percentages = Partial<Record<keyof FinanceBuckets, number>>;
 
-export const BUCKET_ORDER: Array<keyof FinanceBuckets> = ['mustaqbal', 'tawarr2', 'basmala', 'mariam', 'sadaqa'];
+export const BUCKET_ORDER: Array<keyof FinanceBuckets> = ['mustaqbal', 'tawarr2', 'basmala', 'sadaqa'];
 
 const cents = (n: number) => Math.round(n * 100) / 100;
 

@@ -5,7 +5,6 @@ import { isFocusNightLocked } from '@/domain/devotion/prayer';
 import type { ReportView } from '@/domain/report';
 import { Tabs } from '@/ui/Tabs';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine } from 'recharts';
-import { formatTime } from '@/lib/format';
 import { niceTicks } from '@/lib/charts';
 import { ChartTooltip } from '@/ui/ChartTooltip';
 import {
@@ -13,8 +12,6 @@ import {
   IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight,
 } from '@/ui/icons';
 import { usePomodoro } from '@/data/usePomodoro';
-import { useRingAnimation } from '@/ui/useRingAnimation';
-import { WavyRing } from '@/ui/TimerComponents';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
 import { FocusCarousel } from '@/ui/FocusCarousel';
 import { RulerTimer } from '@/ui/RulerTimer';
@@ -55,20 +52,8 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
   const [view, setView] = React.useState<ReportView>('week');
   const [pomTab, setPomTab] = React.useState<'focus' | 'analysis'>('focus');
 
-  // Declare early so useRingAnimation below can reference them
   const FOCUS_S = focusDuration * 60;
   const BREAK_S = breakDuration * 60;
-  const pct = isOvertime ? 100 : (mode === 'focus'
-    ? ((FOCUS_S - timeLeft) / FOCUS_S) * 100
-    : ((BREAK_S - timeLeft) / BREAK_S) * 100
-  );
-
-  const { phase, rotation: ringRotation, smoothPct: smoothRingPct } = useRingAnimation({
-    running,
-    isOvertime,
-    pct,
-    totalSecs: mode === 'focus' ? FOCUS_S : BREAK_S,
-  });
 
   useEffect(() => { document.title = 'Rakeeen - Pomodoro'; }, []);
 
@@ -213,33 +198,19 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
                 persistKey="focus_face"
                   dotColor={getTimerColor()}
                   pages={[
-                    <div className="relative w-full max-w-[300px] aspect-square mx-auto flex items-center justify-center">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <WavyRing pct={smoothRingPct} phase={phase} mode={mode} isOvertime={isOvertime} size={300} waves={mode === 'focus' ? focusDuration : breakDuration} rotation={ringRotation} />
-                      </div>
-
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-4xl sm:text-5xl font-black mb-1 transition-colors duration-500 text-ink">
-                          {isOvertime ? `+${formatTime(overtime)}` : formatTime(timeLeft)}
-                        </span>
-                        <span className="text-[10px] tracking-[0.3em] font-bold text-ink/40 uppercase">
-                          {isOvertime ? 'Overtime' : mode}
-                        </span>
-                      </div>
-                    </div>,
-                    <div className="w-full min-h-[300px] flex items-center justify-center gap-6 sm:gap-10">
+                    <div className="w-full min-h-[220px] flex items-center justify-center gap-5 sm:gap-8">
                       <div className="shrink-0">
                         <PixelClock
                           elapsedSeconds={isOvertime ? FOCUS_S + overtime : (mode === 'focus' ? FOCUS_S : BREAK_S) - timeLeft}
                           mode={mode}
                           running={running}
                           isOvertime={isOvertime}
-                          width="clamp(96px, 22vw, 168px)"
+                          width="clamp(84px, 14vw, 128px)"
                         />
                       </div>
-                      <PixelDigits mm={pixelMM} ss={pixelSS} color={getTimerColor()} maxWidth="min(52vw, 340px)" />
+                      <PixelDigits mm={pixelMM} ss={pixelSS} color={getTimerColor()} maxWidth="min(60vw, 300px)" />
                     </div>,
-                    <div className="w-full min-h-[300px] flex items-center justify-center">
+                    <div className="w-full min-h-[220px] flex items-center justify-center">
                       <RulerTimer seconds={secs} mm={pixelMM} ss={pixelSS} mode={mode} isOvertime={isOvertime} running={running} />
                     </div>,
                   ]}

@@ -12,13 +12,13 @@ describe('rankBanks', () => {
 
 describe('rankBuckets', () => {
   it('counts gold into Future', () => {
-    const r = rankBuckets({ tawarr2: 100, mustaqbal: 100, basmala: 0, mariam: 0, sadaqa: 0 }, 300);
+    const r = rankBuckets({ tawarr2: 100, mustaqbal: 100, basmala: 0, sadaqa: 0 }, 300);
     expect(r[0]).toEqual({ key: 'mustaqbal', balance: 400 });
   });
 
   it('lists every bucket even when the stored record predates one', () => {
-    const old = { tawarr2: 10, mustaqbal: 10, basmala: 0, sadaqa: 0 } as unknown as Parameters<typeof rankBuckets>[0];
-    expect(rankBuckets(old, 0).map((x) => x.key).sort()).toEqual(['basmala', 'mariam', 'mustaqbal', 'sadaqa', 'tawarr2']);
+    const old = { tawarr2: 10, mustaqbal: 10, basmala: 0 } as unknown as Parameters<typeof rankBuckets>[0];
+    expect(rankBuckets(old, 0).map((x) => x.key).sort()).toEqual(['basmala', 'mustaqbal', 'sadaqa', 'tawarr2']);
   });
 });
 

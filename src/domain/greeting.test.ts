@@ -69,7 +69,9 @@ describe('pickGreetingLine', () => {
   const quiet: GreetingInputs = {
     phase: 'push', liveFocus: null, prayerImminent: false, occasion: null,
     absence: null, weekPattern: 'neutral', weather: null, progress: null,
-    glasses: 5, focusMinutes: 30, focusRunning: false, isFriday: false, now: new Date('2026-10-07T14:00:00'),
+    // Minute isn't a multiple of 5, so the live-focus yield window (below) doesn't
+    // interfere with these otherwise-unrelated priority-order checks.
+    glasses: 5, focusMinutes: 30, focusRunning: false, isFriday: false, now: new Date('2026-10-07T14:02:00'),
   };
   const pick = (over: Partial<GreetingInputs>) => pickGreetingLine({ ...quiet, ...over });
 
@@ -111,6 +113,17 @@ describe('pickGreetingLine', () => {
 
   it('Friday outranks the plain phrase', () => {
     expect(pick({ isFriday: true })).toBe("HAPPY JUMU'AH ... SURAT AL-KAHF IS WAITING ");
+  });
+
+  it('a focus session running all day still yields the header once every few minutes', () => {
+    const everyFiveMin = new Date('2026-10-07T14:05:00');
+    const otherMinute = new Date('2026-10-07T14:06:00');
+    // On the yield minute, something else gets a turn instead of the focus line...
+    expect(pick({ liveFocus: 'LIVE ', weather: 'WX ', now: everyFiveMin })).toBe('WX ');
+    // ...but falls straight back to it if nothing else has anything to say that minute.
+    expect(pick({ liveFocus: 'LIVE ', now: everyFiveMin })).toBe('LIVE ');
+    // Any other minute, the focus line is back to winning outright.
+    expect(pick({ liveFocus: 'LIVE ', weather: 'WX ', now: otherMinute })).toBe('LIVE ');
   });
 });
 

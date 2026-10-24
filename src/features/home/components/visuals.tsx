@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ICON_STROKE_WIDTH } from '@/ui/icons';
+import { ICON_STROKE_LINECAP, ICON_STROKE_WIDTH } from '@/ui/icons';
 
 /**
  * Purely presentational pieces for the Home screen: the privacy-blur value
@@ -94,26 +94,29 @@ export const WaterVector: React.FC<{ size?: number; fillLevel?: number }> = ({ s
   );
 };
 
-// FOCUS — hourglass; sand flows top→bottom, like time running out
-// paused=true → hourglass is stuck (no focus today)
+// FOCUS — a small clock face: a dotted rim (12 hour marks, lit in sequence like a hand
+// sweeping past) and one hand, slowly turning. Echoes the pixel clock on the Focus page
+// itself, just simplified down to a size this icon actually reads at.
+// paused=true → the rim stops pulsing and the hand stops turning (no focus today)
 export const FocusVector: React.FC<{ size?: number; paused?: boolean }> = ({ size = 20, paused = false }) => {
-  const dots: [number, number, number][] = [
-    [4,3,0], [8,3,0.1], [12,3,0.2], [16,3,0.1], [20,3,0],
-    [8,8,0.55], [12,8,0.65], [16,8,0.55],
-    [12,12,1.0],
-    [8,16,1.35], [12,16,1.45], [16,16,1.35],
-    [4,21,1.8], [8,21,1.9], [12,21,2.0], [16,21,1.9], [20,21,1.8],
-  ];
+  const dots = Array.from({ length: 12 }, (_, i) => {
+    const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    return { cx: 12 + Math.cos(angle) * 9, cy: 12 + Math.sin(angle) * 9, delay: (i / 12) * 2.4 };
+  });
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      {dots.map(([cx, cy, delay], i) => (
-        <circle key={i} cx={cx} cy={cy} r={i === 8 ? 1.5 : 1.2}
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {dots.map(({ cx, cy, delay }, i) => (
+        <circle key={i} cx={cx} cy={cy} r={1.3} fill="currentColor"
           style={{
             animation: 'vectorFade 3s ease-in-out infinite',
             animationDelay: `${delay}s`,
             animationPlayState: paused ? 'paused' : 'running',
           }} />
       ))}
+      <g style={{ transformOrigin: '12px 12px', animation: 'focusHandSpin 9s linear infinite', animationPlayState: paused ? 'paused' : 'running' }}>
+        <line x1="12" y1="12" x2="12" y2="5" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap={ICON_STROKE_LINECAP} />
+      </g>
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" />
     </svg>
   );
 };

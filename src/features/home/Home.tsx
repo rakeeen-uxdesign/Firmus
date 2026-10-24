@@ -9,7 +9,6 @@ import {
 import { signOut } from 'firebase/auth';
 import { auth } from '@/data/firebase';
 import { usePomodoro } from '@/data/usePomodoro';
-import { useRingAnimation } from '@/ui/useRingAnimation';
 import { AppModal } from '@/ui/AppModal';
 import { getLogicalDate } from '@/domain/day';
 import { usePrayer } from '@/data/usePrayer';
@@ -41,6 +40,16 @@ interface HomeProps {
 
 // How long a manually-picked card stays before the dock snaps back to the system's pick.
 const CARD_REVERT_MS = 30_000;
+
+// Zen/stage-takeover mode: how long an undisturbed focus session runs before the big
+// card grows to fill the dock + date's space. First time is a longer wait than every
+// time after someone waves it off by hovering a small card.
+const ZEN_FIRST_MS = 5 * 60_000;
+const ZEN_RESUME_MS = 3 * 60_000;
+// The same spring the dock's priority arrow and the header's dropdown already use —
+// reused here so every zen-mode move (dock, gap, card width, date) reads as one
+// consistent, physical motion instead of a collection of separately-tuned easings.
+const ZEN_SPRING = { type: 'spring', stiffness: 380, damping: 32, mass: 0.9 } as const;
 
 // Persists last active card so remount starts on the correct card instantly
 type CardId = 'time' | 'water' | 'pomodoro' | 'finance';
@@ -87,25 +96,11 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   const focusMinutes = weekStats?.[todayIdx]?.minutes || 0;
   const focusHours = (focusMinutes / 60).toFixed(1).replace('.0', '');
 
-  // Same ring motion (wave + slow rotation) as the full Focus page — shared via
-  // useRingAnimation so the mini ring on this card and the one on /pomodoro are
-  // never hand-tuned copies that can drift out of sync. Gated on the Focus card
-  // actually being the one displayed — otherwise this rAF loop (and the re-renders
-  // it drives) would keep running at animation-frame rate even while looking at
-  // the Water or Finance card, for a ring that isn't on screen.
   const pomodoroTotalSecs = (mode === 'focus' ? focusDuration : breakDuration) * 60;
-  const pomodoroPct = pomodoroOvertime ? 100 : Math.max(0, ((pomodoroTotalSecs - timeLeft) / pomodoroTotalSecs) * 100);
   // A session that's been started and has progress, but isn't currently ticking —
   // distinct from "never started" (timeLeft === pomodoroTotalSecs) so the card can
   // show a paused state instead of looking identical to true idle.
   const pomodoroPaused = !pomodoroRunning && !pomodoroOvertime && timeLeft > 0 && timeLeft < pomodoroTotalSecs;
-  const isPomodoroCardShown = displayedCardId === 'pomodoro';
-  const { phase: focusRingPhase, rotation: focusRingRotation, smoothPct: focusRingSmoothPct } = useRingAnimation({
-    running: pomodoroRunning && isPomodoroCardShown,
-    isOvertime: pomodoroOvertime && isPomodoroCardShown,
-    pct: pomodoroPct,
-    totalSecs: pomodoroTotalSecs,
-  });
 
   // Save today's snapshot whenever key data changes
   // IMPORTANT: wait for dailyHistoryReady — if we write before Firestore loads,
@@ -237,13 +232,94 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   useEffect(() => {
     const el = dockRef.current;
     if (!el) return;
+    // Read the height synchronously right away, instead of waiting only on the
+    // observer's first async callback — under StrictMode's dev-only double-invoke,
+    // the second (real, kept) effect's observer has sometimes just never delivered
+    // that first callback, leaving dockHeight stuck at null (and the stage stuck at
+    // its fallback height) forever. A direct read can't miss like that: the element
+    // is already laid out by the time any effect runs. The observer stays for
+    // tracking real later changes (a card added/removed from the dock).
+    setDockHeight(el.getBoundingClientRect().height);
     const observer = new ResizeObserver(entries => {
       setDockHeight(entries[0].contentRect.height);
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  // Every mount starts with dockHeight at null, so the stage renders at a fallback
+  // height first and then the ResizeObserver reports the real one — this flag makes
+  // that FIRST correction a snap, not an animated "grows big, then shrinks" on every
+  // visit to Home. Set true only after that first render has already committed, so
+  // zen mode's own height changes (which happen well after mount) still animate.
+  const heightSettledRef = useRef(false);
+  useEffect(() => {
+    if (dockHeight !== null) heightSettledRef.current = true;
+  }, [dockHeight]);
 
+  // ZEN MODE — once a focus session has been running undisturbed past the threshold, OR
+  // once the Time card has just been sitting there as the default/idle view that long,
+  // the big card takes over the column: the dock collapses to icon-only and the date
+  // tile fades out, and the stage grows to fill the whole freed height. Hovering in from
+  // the stage's left edge (see the invisible strip further down — the dock itself is
+  // unhoverable while collapsed) drops it back instantly; if the same condition is still
+  // true and nothing is touched again, it re-expands after ZEN_RESUME_MS. The clock is
+  // tied to what's actually on screen — switching to Water or Finance resets it even if a
+  // focus session is still running in the background, since zen is a stage-manager take-
+  // over for whichever card you're looking at, not a standing timer for the session itself.
+  const [zenMode, setZenMode] = useState(false);
+  const focusActive = mode === 'focus' && (pomodoroRunning || pomodoroOvertime);
+  const zenEligible = displayedCardId === 'pomodoro' ? focusActive : displayedCardId === 'time';
+  const zenSinceRef = useRef<number | null>(null);
+  const zenIsFirstRef = useRef(true);
+
+  useEffect(() => {
+    if (zenEligible) {
+      if (zenSinceRef.current === null) {
+        zenSinceRef.current = Date.now();
+        zenIsFirstRef.current = true;
+      }
+    } else {
+      zenSinceRef.current = null;
+      setZenMode(false);
+    }
+  }, [zenEligible]);
+
+  const exitZen = () => {
+    if (!zenMode) return;
+    setZenMode(false);
+    zenSinceRef.current = Date.now();
+    zenIsFirstRef.current = false;
+  };
+
+  const zenActive = zenMode && (displayedCardId === 'pomodoro' || displayedCardId === 'time');
+
+  // The invisible edge strip that reveals the dock on hover (below) only starts listening
+  // a moment after zen mode actually engages. Without this, a mouse already resting near
+  // where the dock used to be ends up sitting on top of that strip the instant the big
+  // card expands under it — firing onMouseEnter immediately, exiting zen, which starts the
+  // resume timer over, re-triggers zen again, and repeats: the card visibly flickers in
+  // and out instead of settling.
+  const [zenEdgeArmed, setZenEdgeArmed] = useState(false);
+  useEffect(() => {
+    if (!zenActive) { setZenEdgeArmed(false); return; }
+    const t = setTimeout(() => setZenEdgeArmed(true), 600);
+    return () => clearTimeout(t);
+  }, [zenActive]);
+
+  // Measures the full column height available to the stage — what the big card grows
+  // into once the dock collapses and the date tile disappears.
+  const mainRef = useRef<HTMLDivElement>(null);
+  const [mainHeight, setMainHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    setMainHeight(el.getBoundingClientRect().height);
+    const observer = new ResizeObserver(entries => {
+      setMainHeight(entries[0].contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const toggleTheme = () => {
     setTheme(!isDark);
@@ -283,6 +359,16 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
     document.title = 'Rakeeen Home';
     return () => clearInterval(timer);
   }, []);
+
+  // Zen trigger — rechecked every tick of `now` so the threshold fires without
+  // needing its own setTimeout (and so it can't drift if the tab is backgrounded).
+  // zenEligible already requires displayedCardId to be the matching zen-target card
+  // (see its definition above), so there's no separate card check needed here.
+  useEffect(() => {
+    if (!zenEligible || zenMode || zenSinceRef.current === null) return;
+    const threshold = zenIsFirstRef.current ? ZEN_FIRST_MS : ZEN_RESUME_MS;
+    if (Date.now() - zenSinceRef.current >= threshold) setZenMode(true);
+  }, [now, zenEligible, zenMode]);
 
   // Show today's journal summary for a 30-minute window before Isha/sleep (20:00–20:30)
   const isJournalTime = now.getHours() === 20 && now.getMinutes() < 30;
@@ -471,7 +557,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-bg text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col justify-between transition-colors duration-300 relative">
+    <div className="min-h-screen bg-bg text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main flex flex-col transition-colors duration-300 relative">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
 
       {/* 1. HEADER SECTION */}
@@ -555,10 +641,38 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
       </header>
 
       {/* 2. STAGE MANAGER TWO-COLUMN LAYOUT */}
-      <main className="w-full max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-4 md:gap-6 lg:gap-8 mb-6 lg:mb-16 items-stretch lg:items-start">
-        
-        {/* Left stack (Stage Manager dock) */}
-        <div ref={dockRef} className="relative flex lg:flex-col gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-3 lg:pb-0 shrink-0 lg:w-[230px] scrollbar-none -mx-6 px-6 lg:mx-0 lg:px-0">
+      <main
+        ref={mainRef}
+        className="w-full max-w-[1400px] mx-auto flex-1 flex flex-col lg:flex-row gap-4 md:gap-6 lg:gap-8 items-stretch lg:items-start"
+      >
+
+        {/* Left stack (Stage Manager dock) — in zen mode this collapses away completely so
+            the big card can run the full width of the header line above it. Width AND a
+            matching negative margin animate together (framer-motion won't reliably
+            animate the row's own `gap`, so this is what actually closes that last 32px)
+            so the big card reaches all the way to the header's right edge, not just to
+            where the dock used to start. The outer wrapper is what animates/clips; `dockRef`
+            on the inner, always full-width element keeps the ResizeObserver reading its
+            real height the whole time, not whatever the collapsed wrapper clips it to.
+            Hovering back in from the left edge (inside the big card, see below) reveals it. */}
+        <motion.div
+          className="shrink-0 scrollbar-none"
+          initial={false}
+          animate={isLgUp ? { width: zenActive ? 0 : 230, marginRight: zenActive ? -32 : 0 } : undefined}
+          transition={ZEN_SPRING}
+          style={{
+            overflowX: isLgUp ? (zenActive ? 'hidden' : 'visible') : 'auto',
+            overflowY: 'visible',
+          }}
+        >
+        <div
+          ref={dockRef}
+          className="relative flex lg:flex-col pb-3 lg:pb-0 w-max lg:w-[230px] -mx-6 px-6 lg:mx-0 lg:px-0"
+        >
+          <div
+            className="flex lg:flex-col gap-3 lg:gap-4"
+            style={{ opacity: zenActive ? 0 : 1, pointerEvents: zenActive ? 'none' : 'auto', transition: 'opacity 350ms ease' }}
+          >
           {([
             {
               id: 'water',
@@ -667,13 +781,14 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
               </div>
             );
           })}
+          </div>
 
           {/* Priority arrow — one shared element that springs from card to card instead
               of popping in and out, so the eye can actually track it moving. Position is
               purely computed (cardOrder index * fixed card height+gap), not layoutId-based,
               because the dock switches between a horizontal row (mobile) and vertical stack
               (desktop) and the arrow only ever needs the desktop vertical math anyway. */}
-          {systemCardId && (
+          {systemCardId && !zenActive && (
             <motion.div
               className="hidden lg:block absolute -left-10 z-10 pointer-events-none"
               style={{ top: 0 }}
@@ -688,11 +803,24 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
             </motion.div>
           )}
         </div>
+        </motion.div>
 
-        {/* Active Stage (Center/Right) */}
+        {/* Active Stage (Center/Right) — in zen mode this grows to the full column height
+            freed up by the collapsed dock and the hidden date tile. Plain CSS transition,
+            not framer-motion — framer's `animate` on `height` here silently refused to
+            commit value changes (state updated, the rendered height just never followed),
+            so this is driven by a real inline style instead, which doesn't have that bug.
+            The cubic-bezier is an overshoot curve to read as "springy" without framer. */}
         <div
           className="flex-1 flex flex-col items-stretch min-h-[280px] lg:min-h-0"
-          style={isLgUp ? { height: dockHeight ?? 740 } : undefined}
+          style={isLgUp ? {
+            height: (zenActive ? (mainHeight ?? dockHeight) : dockHeight) ?? 740,
+            // No transition for the dock's first real measurement (the 740 fallback
+            // settling to the actual height right after mount) — animating that looked
+            // like the card was briefly oversized and shrinking on every visit to Home.
+            // Real changes after that (zen in/out) get the springy settle.
+            transition: heightSettledRef.current ? 'height 650ms cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+          } : undefined}
         >
           <div
             onClick={() => {
@@ -705,6 +833,18 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
             }}
             className="flex-1 flex flex-col justify-between brutalist-card bg-paper p-5 sm:p-8 lg:p-10 relative group cursor-pointer"
           >
+              {/* Invisible — in zen mode the dock is gone, so this is the only way back:
+                  hovering in from the left edge, right where the dock used to live. Only
+                  armed a moment after zen engages (see zenEdgeArmed) so a mouse already
+                  resting there doesn't immediately re-trigger an exit. */}
+              {zenActive && (
+                <div
+                  className="absolute inset-y-0 left-0 w-10 z-10"
+                  onMouseEnter={zenEdgeArmed ? exitZen : undefined}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+
               {/* Active Card Body Renderer */}
               <div className="flex-1 flex flex-col" style={{ opacity: bigCardVisible ? 1 : 0, transition: 'opacity 0.2s ease' }}>
               {displayedCardId === 'water' && (
@@ -725,11 +865,6 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   overtimeSeconds={overtime}
                   timeLeft={timeLeft}
                   totalSecs={pomodoroTotalSecs}
-                  ringPhase={focusRingPhase}
-                  ringRotation={focusRingRotation}
-                  ringSmoothPct={focusRingSmoothPct}
-                  focusDuration={focusDuration}
-                  breakDuration={breakDuration}
                   onResume={(e) => { e.stopPropagation(); pomodoroStart(); }}
                   focusMinutes={focusMinutes}
                   focusHours={focusHours}
@@ -748,10 +883,22 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
 
       </main>
 
-      {/* 3. FOOTER — today's date, in the middle */}
-      <footer className="w-full max-w-[1400px] mx-auto mt-6 flex justify-center">
+      {/* 3. FOOTER — today's date, centered in whatever room is left between the big card
+          and the bottom of the page (flex-1 fills that space, items-center centers the
+          tile within it). Fades out in zen mode along with the dock, same spring as the
+          rest of it — it doesn't need to collapse its own height for that since the stage's
+          zen height comes from measuring `main` directly, not from the footer shrinking. */}
+      <motion.footer
+        className="w-full max-w-[1400px] mx-auto flex-1 flex items-center justify-center overflow-hidden"
+        initial={false}
+        animate={{
+          opacity: zenActive ? 0 : 1,
+          scale: zenActive ? 0.92 : 1,
+        }}
+        transition={ZEN_SPRING}
+      >
         <PixelDateTile date={getDateParts(now)} width="clamp(56px, 5.5vw, 76px)" />
-      </footer>
+      </motion.footer>
 
       <AppModal
         isOpen={errorModal}

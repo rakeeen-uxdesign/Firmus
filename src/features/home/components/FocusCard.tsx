@@ -1,6 +1,5 @@
 import React from 'react';
 import { IconPlay as Play } from '@/ui/icons';
-import { DMTimer, WavyRing } from '@/ui/TimerComponents';
 import { PixelDigits, PixelClock } from '@/ui/PixelFocusDisplay';
 import { RulerTimer } from '@/ui/RulerTimer';
 import { FocusCarousel } from '@/ui/FocusCarousel';
@@ -16,11 +15,6 @@ export const FocusCardBody: React.FC<{
   overtimeSeconds: number;
   timeLeft: number;
   totalSecs: number;
-  ringPhase: number;
-  ringRotation: number;
-  ringSmoothPct: number;
-  focusDuration: number;
-  breakDuration: number;
   onResume: (e: React.MouseEvent) => void;
   focusMinutes: number;
   focusHours: string;
@@ -28,8 +22,7 @@ export const FocusCardBody: React.FC<{
   fridayLocked: boolean;
   onStart: (e: React.MouseEvent) => void;
 }> = ({
-  running, overtime, paused, mode, overtimeSeconds, timeLeft, totalSecs,
-  ringPhase, ringRotation, ringSmoothPct, focusDuration, breakDuration, onResume,
+  running, overtime, paused, mode, overtimeSeconds, timeLeft, totalSecs, onResume,
   focusMinutes, focusHours, nightLocked, fridayLocked, onStart,
 }) => {
   const accent = overtime ? 'var(--pomo-overtime)' : mode === 'break' ? 'var(--pomo-break)' : 'var(--pomo-focus)';
@@ -51,27 +44,13 @@ export const FocusCardBody: React.FC<{
           </span>
         </div>
 
-        {/* Middle — ring (same motion as the full Focus page) beside the dot-matrix
-            countdown, swipeable with a second pixel-art face */}
+        {/* Middle — the pixel clock beside the dot-matrix countdown, swipeable with a
+            second face */}
         <div className="flex-1 flex items-center justify-center w-full">
           <FocusCarousel
             persistKey="focus_face"
             dotColor={accent}
             pages={[
-              <div className="flex items-center justify-center gap-6 w-full">
-                <div className="shrink-0 w-[110px] h-[110px] sm:w-[140px] sm:h-[140px]">
-                  <WavyRing
-                    pct={ringSmoothPct}
-                    phase={ringPhase}
-                    mode={mode}
-                    isOvertime={overtime}
-                    size={140}
-                    waves={mode === 'focus' ? focusDuration : breakDuration}
-                    rotation={ringRotation}
-                  />
-                </div>
-                <DMTimer mm={mm} ss={ss} color={accent} maxWidth="min(100%, 340px)" />
-              </div>,
               <div className="flex items-center justify-center gap-6 w-full">
                 <div className="shrink-0">
                   <PixelClock

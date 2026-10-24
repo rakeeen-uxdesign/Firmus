@@ -10,7 +10,7 @@ export const FOCUS_TARGET_MINUTES = 10 * 60;
 export const MONTHLY_SALARY = 7000;
 
 const BANK_LABELS = { cib: 'CIB', ahly_main: 'Ahly Main', ahly_meeza: 'Ahly Meeza', bm: 'Banque Misr' };
-const BUCKET_LABELS = { mustaqbal: 'Future', tawarr2: "Tawarru'", basmala: 'Basmala', mariam: 'Mariam', sadaqa: 'Sadaqa' };
+const BUCKET_LABELS = { mustaqbal: 'Future', tawarr2: "Tawarru'", basmala: 'Basmala', sadaqa: 'Sadaqa' };
 export const THNDR_PARTS = [['clouds', 'Clouds'], ['gold', 'Gold'], ['funds', 'Funds']];
 
 const DAY_MS = 86_400_000;
@@ -105,7 +105,7 @@ export function buildFinance(raw, now, goldPrices) {
   const banks = Object.entries(BANK_LABELS).map(([key, label]) => ({ label, balance: Number(raw.banks?.[key]) || 0 }));
   const buckets = Object.entries(BUCKET_LABELS).map(([key, label]) => ({ key, label, balance: Number(raw.buckets?.[key]) || 0 }));
   const banksTotal = sum(raw.banks);
-  const bucketsTotal = sum(raw.buckets);
+  const bucketsTotal = buckets.reduce((total, bucket) => total + bucket.balance, 0);
 
   const goldValue = (raw.gold || []).reduce((s, g) => s + (goldPrices ? g.quantity * (g.carat === 24 ? goldPrices.price24 : goldPrices.price21) : 0), 0);
   const thndr = buildThndr(raw.thndr, now);

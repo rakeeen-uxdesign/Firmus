@@ -6,7 +6,7 @@ import {
 import type { Debt, FinanceBanks, FinanceBuckets } from '@/domain/finance/types';
 
 const banks: FinanceBanks = { cib: 1000, ahly_main: 500, ahly_meeza: 0, bm: 0 };
-const buckets: FinanceBuckets = { tawarr2: 400, mustaqbal: 900, basmala: 0, mariam: 0, sadaqa: 0 };
+const buckets: FinanceBuckets = { tawarr2: 400, mustaqbal: 900, basmala: 0, sadaqa: 0 };
 
 describe('freeMoneyOf', () => {
   it('is what the banks hold beyond what the buckets claim — negative when they claim more', () => {

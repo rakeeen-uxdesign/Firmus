@@ -81,7 +81,10 @@
     --ink: #222C07;
     --ink-faded: #4E5E16;
     --sepia: #C2DC3F;
-    --rust: #809B15;
+    /* An actual rust-red — the old value (#809B15) was olive-green, the same family as
+       --forest, so anything relying on --rust to read as "negative/warning" (a debt, a
+       loss, a delete action) looked just as positive-green as a gain. */
+    --rust: #B7410E;
     --forest: #617615;
     --brand-green: #617615;
     --ghorab-color: #617615;
@@ -97,7 +100,7 @@
     --ink: #E7E8E1;
     --ink-faded: #A5C220;
     --sepia: #C2DC3F;
-    --rust: #617615;
+    --rust: #E2583A;
     --forest: #D7EA6C;
     --brand-green: #D7EA6C;
     --ghorab-color: #617615;
@@ -125,12 +128,14 @@
     background: var(--sepia);
     color: var(--ink);
   }
+  /* A dark green, not --forest's bright lime (dark.theme) — near-white selected text
+     on a bright background was low-contrast and hard to read. */
   body.dark-theme ::selection {
-    background: var(--rust);
+    background: #3A4D12;
     color: var(--ink);
   }
   body.dark-theme ::-moz-selection {
-    background: var(--rust);
+    background: #3A4D12;
     color: var(--ink);
   }
 
@@ -322,6 +327,11 @@ html {
   50% { opacity: 1; }
 }
 
+/* FocusVector's clock hand — one slow turn, like a real second hand */
+@keyframes focusHandSpin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes dotPulse {
   0%, 100% { opacity: 0.7; }
   50%       { opacity: 1; }
@@ -354,64 +364,30 @@ body.dark-theme [class*="border-ink"] {
   cursor: none !important;
 }
 
-/* === Retro CRT panel (Finance › Thndr) ===
-   A self-contained amber-phosphor terminal: scanlines, a slow sweep, a glow on the text.
-   Colours are local to the panel on purpose — it stays a dark screen in light and dark mode. */
-.retro-crt {
-  --crt-bg: #0f0a04;
-  --crt-fg: #ffb84d;
-  --crt-dim: #8c5f22;
-  --crt-edge: rgb(255 184 77 / 0.32);   /* the screen's outer border: a faint line */
-  --crt-rule: rgb(255 184 77 / 0.16);   /* hairlines inside the screen: fainter still */
-  --crt-warn: #ff6b4a;
-  position: relative;
-  overflow: hidden;
-  background: var(--crt-bg);
-  color: var(--crt-fg);
-  border: 1px solid var(--crt-edge);
-  border-radius: 0;
-  text-shadow: 0 0 6px rgb(255 184 77 / 0.42);
-  font-family: var(--font-mono);
-  animation: crtFlicker 6s infinite;
-}
-.retro-crt::before { /* scanlines */
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.3) 0 1px, transparent 1px 3px);
-}
-.retro-crt::after { /* a slow bright band travelling down the screen, plus a soft vignette */
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, transparent 0%, rgb(255 184 77 / 0.07) 50%, transparent 100%) 0 -30% / 100% 30% no-repeat,
-    radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.45) 100%);
-  animation: crtSweep 7s linear infinite;
-}
-.retro-crt > * { position: relative; z-index: 1; }
-.retro-crt .crt-dim { color: var(--crt-dim); text-shadow: none; }
-.retro-crt .crt-warn { color: var(--crt-warn); text-shadow: 0 0 6px rgb(255 107 74 / 0.42); }
-.retro-crt .crt-cursor { display: inline-block; width: 0.55em; height: 1em; margin-left: 0.15em; vertical-align: -0.1em; background: var(--crt-fg); animation: crtBlink 1.05s steps(1) infinite; }
-.retro-crt .crt-rule { border-color: var(--crt-rule); }
-
-@keyframes crtBlink { 50% { opacity: 0; } }
-@keyframes crtSweep { to { background-position: 0 130%, 0 0; } }
-@keyframes crtFlicker {
-  0%, 94%, 100% { opacity: 1; }
-  95% { opacity: 0.93; }
-  96% { opacity: 1; }
-  97% { opacity: 0.95; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .retro-crt, .retro-crt::after, .retro-crt .crt-cursor { animation: none; }
-}
-
 /* === Focus ruler face === it takes the same accents as the other Focus faces (green to focus, teal on a break, gold in overtime) */
 .ruler-face { --ruler-tone: var(--pomo-focus); }
 .ruler-face.ruler-break { --ruler-tone: var(--pomo-break); }
 .ruler-face.ruler-overtime { --ruler-tone: var(--pomo-overtime); }
+
+/* === Thndr terminal texture === a hint of scanlines + a blinking cursor — the only nod
+   left to where this screen started, built from --ink so it survives both themes instead
+   of the old panel's fixed-dark background. */
+.thndr-scan { position: relative; overflow: hidden; }
+.thndr-scan::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--ink) 5%, transparent) 0px,
+    color-mix(in srgb, var(--ink) 5%, transparent) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+@keyframes thndrBlink { 0%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.thndr-cursor { animation: thndrBlink 1.1s step-end infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .thndr-cursor { animation: none; }
+}

@@ -61,8 +61,8 @@ const SubscriptionModal: React.FC<{ isOpen: boolean; onClose: () => void; initia
   };
 
   return (
-    <AppModal isOpen={isOpen} onClose={onClose} title={initial ? 'Edit Subscription' : 'Add Subscription'} raw maxWidth="max-w-sm">
-      <ModalForm onSubmit={submit} submitLabel={initial ? 'Save Changes' : 'Add Subscription'}>
+    <AppModal isOpen={isOpen} onClose={onClose} title={initial ? 'Edit Payit' : 'Add Payit'} raw maxWidth="max-w-sm">
+      <ModalForm onSubmit={submit} submitLabel={initial ? 'Save Changes' : 'Add Payit'}>
         <Field label="Name">
           <TextInput type="text" placeholder="e.g. Netflix, Spotify" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
         </Field>
@@ -133,7 +133,7 @@ export const SubscriptionsTab: React.FC<{
                 <MaskedValue disabled={!privacyMode}>{formatEGP(share)}</MaskedValue>
               </p>
             </div>
-            <p className="font-mono-main text-xs text-ink/25">{formatEGP(MONTHLY_SALARY_EGP)} − subs / mo</p>
+            <p className="font-mono-main text-xs text-ink/25">{formatEGP(MONTHLY_SALARY_EGP)} − Payit / mo</p>
           </div>
         </div>
       )}
@@ -144,9 +144,9 @@ export const SubscriptionsTab: React.FC<{
       </div>
 
       {subscriptions.length === 0 ? (
-        <EmptyState>No subscriptions added yet.</EmptyState>
+        <EmptyState>No Payit added yet.</EmptyState>
       ) : rows.length === 0 ? (
-        <EmptyState>{filter === 'day' ? 'Nothing renews today.' : `No ${filter === 'month' ? 'monthly' : 'yearly'} subscriptions.`}</EmptyState>
+        <EmptyState>{filter === 'day' ? 'Nothing renews today.' : `No ${filter === 'month' ? 'monthly' : 'yearly'} Payit.`}</EmptyState>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           {rows.map(({ sub, daysLeft }) => {
