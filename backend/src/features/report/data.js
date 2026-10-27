@@ -91,18 +91,39 @@ export const monthlySubscriptionCost = (subs) => subs.reduce((s, sub) => s + sub
 const byTimeAsc = (a, b) => String(a.timestamp).localeCompare(String(b.timestamp));
 const delta = (newer, older) => ({ amount: newer - older, percent: older === 0 ? null : ((newer - older) / older) * 100 });
 
-function buildThndr(entries, now) {
+/** Net money put into Thndr (negative: taken out) by the flows after `afterIso` and up to `untilIso` — see src/domain/finance/thndr.ts. */
+const netFlows = (flows, afterIso, untilIso = null) => flows
+  .filter((f) => (afterIso === null || f.timestamp > afterIso) && (untilIso === null || f.timestamp <= untilIso))
+  .reduce((s, f) => s + (f.type === 'deposit' ? f.amount : -f.amount), 0);
+
+/**
+ * The Thndr portfolio now. A reading is what it's worth; a flow is money the user moved in or out,
+ * so the value is the latest reading plus the flows since, and the gain is measured against what
+ * was put in — a deposit is never a gain. (Ported from src/domain/finance/thndr.ts.)
+ */
+function buildThndr(entries, flows, now) {
   const series = [...(entries || [])].sort(byTimeAsc);
+  const moves = flows || [];
   if (!series.length) return null;
+  const first = series[0];
   const last = series[series.length - 1];
   const prev = series[series.length - 2];
-  const withParts = [...series].reverse().find((e) => e.parts);
+  const value = last.value + netFlows(moves, last.timestamp);
+  const invested = first.value + netFlows(moves, first.timestamp);
+
+  const base = [...series].reverse().find((e) => e.parts);
+  const parts = base ? Object.fromEntries(THNDR_PARTS.map(([k]) => [k, base.parts[k] || 0])) : null;
+  if (parts) for (const f of moves) if (f.timestamp > base.timestamp) parts[f.part] = Math.max(0, parts[f.part] + (f.type === 'deposit' ? f.amount : -f.amount));
+
   return {
-    value: last.value,
+    value,
+    invested,
+    gain: delta(value, invested),
     updatedAt: last.timestamp,
     daysSinceUpdate: Math.floor((startOfDay(now) - startOfDay(new Date(last.timestamp))) / DAY_MS),
-    sincePrevious: prev ? delta(last.value, prev.value) : null,
-    parts: withParts ? Object.fromEntries(THNDR_PARTS.map(([k]) => [k, withParts.parts[k] || 0])) : null,
+    // The market's own move since the previous reading — money put in between is not part of it.
+    sincePrevious: prev ? delta(last.value, prev.value + netFlows(moves, prev.timestamp, last.timestamp)) : null,
+    parts,
   };
 }
 
@@ -113,7 +134,7 @@ export function buildFinance(raw, now, goldPrices) {
   const bucketsTotal = buckets.reduce((total, bucket) => total + bucket.balance, 0);
 
   const goldValue = (raw.gold || []).reduce((s, g) => s + (goldPrices ? g.quantity * (g.carat === 24 ? goldPrices.price24 : goldPrices.price21) : 0), 0);
-  const thndr = buildThndr(raw.thndr, now);
+  const thndr = buildThndr(raw.thndr, raw.thndrFlows, now);
   const cash = Number(raw.buckets?.mustaqbal) || 0;
   const future = { cash, gold: goldValue, thndr: thndr?.value || 0, total: cash + goldValue + (thndr?.value || 0) };
 
@@ -203,7 +224,7 @@ export function buildHighlights({ water, focus, finance }) {
   if (finance.free < 0) out.push({ tone: 'warn', text: `The buckets hold ${egp(Math.abs(finance.free))} more than the banks do.` });
 
   const t = finance.thndr;
-  if (t?.sincePrevious && t.sincePrevious.amount !== 0) out.push({ tone: 'info', text: `Thndr moved ${signedEgp(t.sincePrevious.amount)} since the previous reading.` });
+  if (t?.sincePrevious && t.sincePrevious.amount !== 0) out.push({ tone: 'info', text: `Thndr's market moved ${signedEgp(t.sincePrevious.amount)} since the previous reading.` });
   if (t && t.daysSinceUpdate >= 14) out.push({ tone: 'info', text: `Thndr was last updated ${t.daysSinceUpdate} days ago.` });
   return out;
 }

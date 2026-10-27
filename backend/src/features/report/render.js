@@ -242,7 +242,8 @@ function thndr(doc, report, y) {
     note(doc, `${signedEgp(move.amount)}${pct}`, M, y + 8, { size: 9, color: move.amount >= 0 ? C.accent : C.warn, width: W, align: 'right' });
   }
   const stamp = new Date(t.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  note(doc, `Updated ${stamp}`, M, y + 28, { size: 7 });
+  const gainPct = t.gain.percent === null ? '' : `  ${t.gain.percent >= 0 ? '+' : '-'}${Math.abs(t.gain.percent).toFixed(1)}%`;
+  note(doc, `Updated ${stamp}   ·   invested ${egp(t.invested)}   ·   gain ${signedEgp(t.gain.amount)}${gainPct}`, M, y + 28, { size: 7 });
   if (!t.parts) return y + 50;
   const colors = [C.ink, C.accent, C.soft];
   const total = THNDR_PARTS.reduce((s, [k]) => s + t.parts[k], 0);

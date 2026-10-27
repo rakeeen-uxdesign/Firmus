@@ -1,4 +1,4 @@
-import type { ThndrEntry, ThndrPart, ThndrParts } from '@/domain/finance/types';
+import type { ThndrEntry, ThndrFlow, ThndrPart, ThndrParts } from '@/domain/finance/types';
 
 /** The parts in display order, with their labels. */
 export const THNDR_PARTS: ReadonlyArray<{ key: ThndrPart; label: string }> = [
@@ -24,12 +24,6 @@ const byTimeAsc = (a: ThndrEntry, b: ThndrEntry) => a.timestamp.localeCompare(b.
 /** The readings oldest first — the order a chart wants. */
 export const thndrSeries = (entries: ThndrEntry[]): ThndrEntry[] => [...entries].sort(byTimeAsc);
 
-/** The latest reading's value, or 0 when nothing has been recorded. */
-export function latestThndrValue(entries: ThndrEntry[]): number {
-  const series = thndrSeries(entries);
-  return series.length ? series[series.length - 1].value : 0;
-}
-
 export interface ThndrRow {
   entry: ThndrEntry;
   /** Against the reading before it; null for the very first. */
@@ -50,18 +44,6 @@ export function thndrRows(entries: ThndrEntry[]): ThndrRow[] {
     .reverse();
 }
 
-/** Move from the first reading ever to the latest; null with fewer than two readings. */
-export function thndrSinceStart(entries: ThndrEntry[]): ThndrDelta | null {
-  const series = thndrSeries(entries);
-  return series.length < 2 ? null : thndrDelta(series[series.length - 1].value, series[0].value);
-}
-
-/** The latest reading that recorded a split, or null. */
-export function latestThndrParts(entries: ThndrEntry[]): ThndrParts | null {
-  const withParts = thndrSeries(entries).filter((e) => e.parts);
-  return withParts.length ? { ...EMPTY_THNDR_PARTS, ...withParts[withParts.length - 1].parts } : null;
-}
-
 /** Each part's share of the total, in percent (all 0 when the total is 0). */
 export function thndrShares(parts: ThndrParts): ThndrParts {
   const total = thndrPartsTotal(parts);
@@ -73,4 +55,85 @@ export function thndrPartDeltas(newer: ThndrEntry, older: ThndrEntry | undefined
   if (!newer.parts || !older?.parts) return null;
   const n = newer.parts, o = older.parts;
   return Object.fromEntries(THNDR_PARTS.map(({ key }) => [key, thndrDelta(n[key] || 0, o[key] || 0)])) as Record<ThndrPart, ThndrDelta>;
+}
+
+// ─── Money moved in and out ─────────────────────────────────────────────────
+//
+// A reading is what the portfolio is worth; a flow is money the user put in or took out. Telling
+// them apart is what makes "gain" honest: depositing 2,000 raises the value but isn't a gain.
+
+const signedAmount = (flow: ThndrFlow) => (flow.type === 'deposit' ? flow.amount : -flow.amount);
+
+/** Net money put in (negative: taken out) by the flows after `afterIso` and up to `untilIso` (both exclusive/inclusive as named). */
+export function netFlows(flows: ThndrFlow[], afterIso: string | null, untilIso: string | null = null): number {
+  return flows
+    .filter((f) => (afterIso === null || f.timestamp > afterIso) && (untilIso === null || f.timestamp <= untilIso))
+    .reduce((sum, f) => sum + signedAmount(f), 0);
+}
+
+/** What the portfolio is worth now: the latest reading plus whatever was put in or taken out since. With no readings yet, the net of the flows. */
+export function currentThndrValue(entries: ThndrEntry[], flows: ThndrFlow[]): number {
+  const series = thndrSeries(entries);
+  const latest = series[series.length - 1];
+  return latest ? latest.value + netFlows(flows, latest.timestamp) : Math.max(0, netFlows(flows, null));
+}
+
+/** The split now: the latest reading that has one, moved by the flows since it. Null when there is no split to build on. */
+export function currentThndrParts(entries: ThndrEntry[], flows: ThndrFlow[]): ThndrParts | null {
+  const base = [...thndrSeries(entries)].reverse().find((e) => e.parts);
+  if (!base) return null;
+  const parts: ThndrParts = { ...EMPTY_THNDR_PARTS, ...base.parts };
+  for (const f of flows) if (f.timestamp > base.timestamp) parts[f.part] = Math.max(0, parts[f.part] + signedAmount(f));
+  return parts;
+}
+
+export interface ThndrPerformance {
+  /** What the user has put in: the first reading, plus the flows since. */
+  invested: number;
+  value: number;
+  /** Value against invested — the real gain or loss, with money moved in or out taken out of it. */
+  gain: ThndrDelta;
+}
+
+/** Null until there is a first reading to measure from. */
+export function thndrPerformance(entries: ThndrEntry[], flows: ThndrFlow[]): ThndrPerformance | null {
+  const first = thndrSeries(entries)[0];
+  if (!first) return null;
+  const invested = first.value + netFlows(flows, first.timestamp);
+  const value = currentThndrValue(entries, flows);
+  return { invested, value, gain: thndrDelta(value, invested) };
+}
+
+export type ThndrTimelineRow =
+  | {
+      kind: 'reading';
+      entry: ThndrEntry;
+      /** Total move since the previous reading — null for the first. */
+      delta: ThndrDelta | null;
+      partDeltas: Record<ThndrPart, ThndrDelta> | null;
+      /** Money put in (negative: taken out) between the previous reading and this one. */
+      contributed: number;
+      /** The move the market made on its own: the total less what was contributed. */
+      market: ThndrDelta | null;
+    }
+  | { kind: 'flow'; flow: ThndrFlow };
+
+/** Readings and flows together, newest first; each reading splits its move into what was contributed and what the market did. */
+export function thndrTimeline(entries: ThndrEntry[], flows: ThndrFlow[]): ThndrTimelineRow[] {
+  const series = thndrSeries(entries);
+  const readings: ThndrTimelineRow[] = thndrRows(entries).map((row) => {
+    const previous = series[series.findIndex((e) => e.id === row.entry.id) - 1];
+    const contributed = previous ? netFlows(flows, previous.timestamp, row.entry.timestamp) : 0;
+    return {
+      kind: 'reading' as const,
+      entry: row.entry,
+      delta: row.delta,
+      partDeltas: row.partDeltas,
+      contributed,
+      market: previous ? thndrDelta(row.entry.value, previous.value + contributed) : null,
+    };
+  });
+  const moves: ThndrTimelineRow[] = flows.map((flow) => ({ kind: 'flow' as const, flow }));
+  const time = (r: ThndrTimelineRow) => (r.kind === 'reading' ? r.entry.timestamp : r.flow.timestamp);
+  return [...readings, ...moves].sort((a, b) => time(b).localeCompare(time(a)));
 }

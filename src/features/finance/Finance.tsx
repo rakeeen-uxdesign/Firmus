@@ -13,7 +13,8 @@ import { BANK_LABELS, BUCKET_META } from '@/features/finance/components/visuals'
 import { OverviewTab, type FinanceTab } from '@/features/finance/components/OverviewTab';
 import { GoldTab } from '@/features/finance/components/GoldTab';
 import { ThndrTab } from '@/features/finance/components/ThndrTab';
-import { latestThndrValue } from '@/domain/finance/thndr';
+import { ThndrMoneyModal, type ThndrMoneyDraft } from '@/features/finance/components/ThndrMoneyModal';
+import { currentThndrParts, currentThndrValue } from '@/domain/finance/thndr';
 import { SubscriptionsTab } from '@/features/finance/components/SubscriptionsTab';
 import { DebtModal, DebtsTab } from '@/features/finance/components/DebtsTab';
 import { LogsTab } from '@/features/finance/components/LogsTab';
@@ -36,6 +37,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
     splitTemplate, setSplitTemplate,
     gold, setGold,
     thndr, setThndr,
+    thndrFlows, setThndrFlows,
     subscriptions, setSubscriptions,
     debts, setDebts,
     updateBankBalance, updateBucketBalance,
@@ -46,6 +48,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   const [privacyMode, setPrivacyMode] = useState(true);
   const [moveModal, setMoveModal] = useState<{ open: boolean; draft: MoveDraft }>({ open: false, draft: { type: 'deposit', bank: null } });
   const [splitModal, setSplitModal] = useState<{ open: boolean; mode: 'income' | 'assign' }>({ open: false, mode: 'income' });
+  const [thndrMoneyOpen, setThndrMoneyOpen] = useState(false);
   const [debtModal, setDebtModal] = useState<{ open: boolean; debt: Debt | null; type: Debt['type'] }>({ open: false, debt: null, type: 'owed_to_me' });
   // Spot prices are cached; they're only re-fetched while the Gold tab is open.
   const { prices: goldPrices, loading: loadingPrices } = useGoldPrices(tab === 'gold');
@@ -68,9 +71,16 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
       bank: BANK_LABELS[move.bank],
       ...(move.bucket ? { bucket: BUCKET_META[move.bucket].en } : {}),
       mode: move.mode ?? 'manual',
+      ...(move.category ? { category: move.category } : {}),
     });
     const debt = urgentDebtFor(move, crypto.randomUUID());
     if (debt) await setDebts((prev) => [...(prev || []), debt]);
+  };
+
+  /** Money into / out of Thndr: recorded as a flow (so it isn't a gain), and — if asked — moved out of / back into the bank. */
+  const handleThndrMoney = async ({ flow, move }: ThndrMoneyDraft) => {
+    if (move) await handleMove(move);
+    await setThndrFlows((prev) => [{ ...flow, id: crypto.randomUUID(), timestamp: new Date().toISOString() }, ...(prev || [])]);
   };
 
   const free = freeMoneyOf(banks, buckets);
@@ -142,7 +152,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
             buckets={buckets}
             gold={gold ?? []}
             goldPrices={goldPrices}
-            thndrValue={latestThndrValue(thndr ?? [])}
+            thndrValue={currentThndrValue(thndr ?? [], thndrFlows ?? [])}
             subscriptions={subscriptions ?? []}
             debts={debts ?? []}
             privacyMode={privacyMode}
@@ -155,7 +165,15 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         {tab === 'gold' && (
           <GoldTab gold={gold ?? []} setGold={setGold} prices={goldPrices} loadingPrices={loadingPrices} privacyMode={privacyMode} />
         )}
-        {tab === 'thndr' && <ThndrTab entries={thndr ?? []} setEntries={setThndr} />}
+        {tab === 'thndr' && (
+          <ThndrTab
+            entries={thndr ?? []}
+            setEntries={setThndr}
+            flows={thndrFlows ?? []}
+            setFlows={setThndrFlows}
+            onAddMoney={() => setThndrMoneyOpen(true)}
+          />
+        )}
         {tab === 'subscriptions' && (
           <SubscriptionsTab subscriptions={subscriptions ?? []} setSubscriptions={setSubscriptions} privacyMode={privacyMode} />
         )}
@@ -188,6 +206,16 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         template={splitTemplate ?? {}}
         debts={debts ?? []}
         onConfirm={handleSplit}
+      />
+
+      <ThndrMoneyModal
+        isOpen={thndrMoneyOpen}
+        onClose={() => setThndrMoneyOpen(false)}
+        banks={banks}
+        buckets={buckets}
+        parts={currentThndrParts(thndr ?? [], thndrFlows ?? [])}
+        value={currentThndrValue(thndr ?? [], thndrFlows ?? [])}
+        onConfirm={handleThndrMoney}
       />
 
       <MoneyMoveModal

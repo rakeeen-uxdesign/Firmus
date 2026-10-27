@@ -4,7 +4,7 @@ import { EMPTY_BANKS, EMPTY_BUCKETS } from '@/domain/finance/defaults';
 import { BUCKET_ORDER, type Percentages } from '@/domain/finance/split';
 import type {
   FinanceBanks, FinanceBuckets,
-  GoldAsset, Subscription, FinanceLog, Debt, ThndrEntry,
+  GoldAsset, Subscription, FinanceLog, Debt, ThndrEntry, ThndrFlow,
 } from '@/domain/finance/types';
 
 const VALID_BUCKET_KEYS = new Set<string>(BUCKET_ORDER);
@@ -17,6 +17,8 @@ export function useFinance() {
   const [gold, setGold] = useFirebaseSync<GoldAsset[]>('finance_gold', []);
   const [subscriptions, setSubscriptionsSynced] = useFirebaseSync<Subscription[]>('finance_subscriptions', []);
   const [thndr, setThndr] = useFirebaseSync<ThndrEntry[]>('finance_thndr', []);
+  // Money the user put into / took out of Thndr — kept apart from the readings so a deposit never looks like a gain.
+  const [thndrFlows, setThndrFlows] = useFirebaseSync<ThndrFlow[]>('finance_thndr_flows', []);
   const [debts, setDebts] = useFirebaseSync<Debt[]>('finance_debts', []);
   const [logs, setLogs] = useFirebaseSync<FinanceLog[]>('finance_logs', []);
   // How the last income was split (each bucket's share, in percent) — the next one starts from it.
@@ -81,6 +83,8 @@ export function useFinance() {
     setSubscriptions,
     thndr,
     setThndr,
+    thndrFlows,
+    setThndrFlows,
     debts,
     setDebts,
     updateBankBalance,

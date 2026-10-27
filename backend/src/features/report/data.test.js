@@ -96,6 +96,35 @@ describe('buildReport', () => {
   });
 });
 
+describe('Thndr: money moved in is not a gain', () => {
+  const entries = [
+    { id: 'a', value: 10000, timestamp: '2026-10-01T10:00:00.000Z', parts: { clouds: 6000, gold: 3000, funds: 1000 } },
+    { id: 'b', value: 12100, timestamp: '2026-10-10T10:00:00.000Z', parts: { clouds: 8000, gold: 3000, funds: 1100 } },
+  ];
+  const deposit = (amount, day, part = 'clouds') => ({ id: `d${day}`, type: 'deposit', amount, part, timestamp: `2026-10-${String(day).padStart(2, '0')}T15:00:00.000Z` });
+  const report = (flows) => buildReport({ thndr: entries, thndrFlows: flows }, now).finance.thndr;
+
+  it('the gain is the value against what was put in', () => {
+    const t = report([deposit(2000, 5)]);   // 2,000 of the 2,100 rise was a deposit
+    expect(t.invested).toBe(12000);
+    expect(t.value).toBe(12100);
+    expect(t.gain.amount).toBe(100);
+  });
+  it("the previous-reading move is the market's own", () => {
+    expect(report([deposit(2000, 5)]).sincePrevious.amount).toBe(100);
+    expect(report([]).sincePrevious.amount).toBe(2100);
+  });
+  it('a deposit after the latest reading raises the value and that part, without a new reading', () => {
+    const t = report([deposit(500, 14, 'gold')]);
+    expect(t.value).toBe(12600);
+    expect(t.parts).toEqual({ clouds: 8000, gold: 3500, funds: 1100 });
+  });
+  it('and it shows up in the future fund total', () => {
+    const r = buildReport({ buckets: { mustaqbal: 0 }, thndr: entries, thndrFlows: [deposit(500, 14)] }, now);
+    expect(r.finance.future.thndr).toBe(12600);
+  });
+});
+
 describe('words', () => {
   it('durations and countdowns', () => {
     expect(duration(200)).toBe('3h 20m');

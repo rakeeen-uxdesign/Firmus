@@ -4,10 +4,10 @@ import { IconPencil as Pencil, IconTrash2 as Trash2 } from '@/ui/icons';
 import { formatEGP } from '@/domain/finance/money';
 import { removeById, upsertById } from '@/domain/finance/collections';
 import {
-  THNDR_PARTS, latestThndrParts, latestThndrValue, thndrPartsTotal, thndrRows, thndrShares, thndrSinceStart,
+  THNDR_PARTS, currentThndrParts, currentThndrValue, thndrPartsTotal, thndrPerformance, thndrShares, thndrTimeline,
   type ThndrDelta,
 } from '@/domain/finance/thndr';
-import type { ThndrEntry, ThndrPart, ThndrParts } from '@/domain/finance/types';
+import type { ThndrEntry, ThndrFlow, ThndrPart, ThndrParts } from '@/domain/finance/types';
 import { Field, ModalForm, TextInput } from '@/features/finance/components/forms';
 import { EmptyState, ListCard, ListRow } from '@/features/finance/components/lists';
 import { ActionButton } from '@/features/finance/components/ActionButton';
@@ -101,57 +101,63 @@ const ThndrModal: React.FC<{
 
 /**
  * Thndr has no API, so its value is a log of readings typed in by hand, split into clouds, gold
- * and funds — same card system as the rest of Finance (Gold, Debts, …), with one accent colour
- * and a couple of terminal-ish touches (">" captions, THNDR.EXE) as the only nod to where this
- * screen started.
+ * and funds — plus the money moved in and out, kept apart so a deposit never counts as a gain.
+ * Same card system as the rest of Finance (Gold, Debts, …), with one accent colour and a couple
+ * of terminal-ish touches (">" captions, THNDR.EXE) as the only nod to where this screen started.
  */
 export const ThndrTab: React.FC<{
   entries: ThndrEntry[];
   setEntries: (next: ThndrEntry[]) => Promise<void>;
-}> = ({ entries, setEntries }) => {
+  flows: ThndrFlow[];
+  setFlows: (next: ThndrFlow[]) => Promise<void>;
+  /** Opens the money in / out form, which lives in Finance because it can move a bank balance too. */
+  onAddMoney: () => void;
+}> = ({ entries, setEntries, flows, setFlows, onAddMoney }) => {
   const [modal, setModal] = useState<{ open: boolean; entry: ThndrEntry | null }>({ open: false, entry: null });
 
-  const rows = thndrRows(entries);
-  const latest = latestThndrValue(entries);
-  const latestParts = latestThndrParts(entries);
-  const shares = latestParts ? thndrShares(latestParts) : null;
-  const sinceLast = rows[0]?.delta ?? null;
-  const sinceStart = thndrSinceStart(entries);
+  const timeline = thndrTimeline(entries, flows);
+  const current = currentThndrValue(entries, flows);
+  const parts = currentThndrParts(entries, flows);
+  const shares = parts ? thndrShares(parts) : null;
+  const performance = thndrPerformance(entries, flows);
+  const hasAnything = entries.length > 0 || flows.length > 0;
 
   return (
     <div className="space-y-6">
-      {/* Portfolio value + how it moved, beside the split — same two-panel shape as Gold */}
+      {/* Portfolio value + what's been put in and what it has earned, beside the split — same two-panel shape as Gold */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="thndr-scan brutalist-card no-lift bg-paper-dark p-6 md:col-span-2 flex flex-col justify-between gap-6">
           <div className="flex items-center justify-between">
             <p className={captionLabel}>Thndr.exe — portfolio value<span className="thndr-cursor ml-0.5" style={{ color: ACCENT }}>_</span></p>
-            <p className="font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/25">{entries.length} {entries.length === 1 ? 'reading' : 'readings'}</p>
+            <p className="font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/25">
+              {entries.length} {entries.length === 1 ? 'reading' : 'readings'} · {flows.length} {flows.length === 1 ? 'move' : 'moves'}
+            </p>
           </div>
           <div>
-            <p className="font-mono-main text-4xl font-black" style={{ color: entries.length ? ACCENT : undefined }}>
-              {entries.length === 0 ? <span className="text-ink/25">—</span> : formatEGP(latest)}
+            <p className="font-mono-main text-4xl font-black" style={{ color: hasAnything ? ACCENT : undefined }}>
+              {hasAnything ? formatEGP(current) : <span className="text-ink/25">—</span>}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
             <div>
-              <p className={`${captionLabel} mb-1`}>Since previous</p>
-              <p className="font-mono-main text-[13px]"><DeltaText delta={sinceLast} /></p>
+              <p className={`${captionLabel} mb-1`}>Invested</p>
+              <p className="font-mono-main text-[13px]">{performance ? formatEGP(performance.invested) : <span className="text-ink/25">——</span>}</p>
             </div>
             <div>
-              <p className={`${captionLabel} mb-1`}>Since first reading</p>
-              <p className="font-mono-main text-[13px]"><DeltaText delta={sinceStart} /></p>
+              <p className={`${captionLabel} mb-1`}>Gain</p>
+              <p className="font-mono-main text-[13px]"><DeltaText delta={performance?.gain ?? null} /></p>
             </div>
           </div>
         </div>
 
         <div className="brutalist-card no-lift bg-paper-dark p-6">
           <p className={`${captionLabel} mb-4`}>Split</p>
-          {shares && latestParts ? (
+          {shares && parts ? (
             <div className="space-y-3">
               {THNDR_PARTS.map(({ key, label }) => (
                 <div key={key} className="flex justify-between items-baseline gap-3">
                   <span className="font-mono-main text-xs font-bold text-ink/40">{label} <span className="text-ink/25">{shares[key].toFixed(0)}%</span></span>
-                  <span className="font-mono-main text-sm font-bold">{formatEGP(latestParts[key])}</span>
+                  <span className="font-mono-main text-sm font-bold">{formatEGP(parts[key])}</span>
                 </div>
               ))}
             </div>
@@ -162,27 +168,53 @@ export const ThndrTab: React.FC<{
       </div>
 
       <div className="flex justify-between items-center">
-        <p className={captionLabel}>Readings</p>
-        <ActionButton tone="solid" onClick={() => setModal({ open: true, entry: null })}>Update value</ActionButton>
+        <p className={captionLabel}>Records</p>
+        <div className="flex items-center gap-4">
+          <ActionButton onClick={onAddMoney}>Money in / out</ActionButton>
+          <ActionButton tone="solid" onClick={() => setModal({ open: true, entry: null })}>Update value</ActionButton>
+        </div>
       </div>
 
-      {rows.length === 0 ? (
-        <EmptyState>No readings yet — press "Update value" to add the first.</EmptyState>
+      {timeline.length === 0 ? (
+        <EmptyState>Nothing yet — "Update value" records what Thndr shows; "Money in / out" records money you moved.</EmptyState>
       ) : (
         <ListCard>
-          {rows.map(({ entry, delta, partDeltas }, i) => (
-            <ListRow key={entry.id} first={i === 0}>
+          {timeline.map((row, i) => row.kind === 'flow' ? (
+            <ListRow key={row.flow.id} first={i === 0}>
               <div className="flex-1 min-w-0">
-                <p className="font-mono-main text-[11px] text-ink/40">› {stamp(entry.timestamp)}</p>
-                {entry.note && <p className="font-mono-main italic text-[11px] mt-1 text-ink/40">"{entry.note}"</p>}
-                {entry.parts && (
+                <p className="font-mono-main text-[11px] text-ink/40">› {stamp(row.flow.timestamp)}</p>
+                {row.flow.note && <p className="font-mono-main italic text-[11px] mt-1 text-ink/40">"{row.flow.note}"</p>}
+                <p className="font-mono-main text-[10px] mt-2 uppercase text-ink/40">
+                  {row.flow.type === 'deposit' ? 'Money added to' : 'Money taken out of'} {THNDR_PARTS.find((p) => p.key === row.flow.part)!.label}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="font-mono-main font-black text-xl" style={{ color: row.flow.type === 'deposit' ? ACCENT : 'var(--rust)' }}>
+                  {row.flow.type === 'deposit' ? '+' : '−'}{formatEGP(row.flow.amount)}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 w-12 justify-end opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <button
+                  onClick={() => setFlows(flows.filter((f) => f.id !== row.flow.id))}
+                  aria-label="Delete"
+                  title="Removes the record only — your bank balance isn't changed"
+                  className="text-ink/25 hover:text-rust transition-colors cursor-pointer"
+                ><Trash2 size={13} /></button>
+              </div>
+            </ListRow>
+          ) : (
+            <ListRow key={row.entry.id} first={i === 0}>
+              <div className="flex-1 min-w-0">
+                <p className="font-mono-main text-[11px] text-ink/40">› {stamp(row.entry.timestamp)}</p>
+                {row.entry.note && <p className="font-mono-main italic text-[11px] mt-1 text-ink/40">"{row.entry.note}"</p>}
+                {row.entry.parts && (
                   <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-[10px] font-mono-main">
                     {THNDR_PARTS.map(({ key, label }) => (
                       <span key={key} className="text-ink/40">
                         <span className="uppercase">{label} </span>
-                        <span className="text-ink/60">{formatEGP(entry.parts![key])}</span>
-                        {partDeltas && partDeltas[key].amount !== 0 && (
-                          <span style={{ color: partDeltas[key].amount > 0 ? 'var(--forest)' : 'var(--rust)' }}> {partDeltas[key].amount > 0 ? '▲' : '▼'}{formatEGP(Math.abs(partDeltas[key].amount))}</span>
+                        <span className="text-ink/60">{formatEGP(row.entry.parts![key])}</span>
+                        {row.partDeltas && row.partDeltas[key].amount !== 0 && (
+                          <span style={{ color: row.partDeltas[key].amount > 0 ? 'var(--forest)' : 'var(--rust)' }}> {row.partDeltas[key].amount > 0 ? '▲' : '▼'}{formatEGP(Math.abs(row.partDeltas[key].amount))}</span>
                         )}
                       </span>
                     ))}
@@ -190,12 +222,21 @@ export const ThndrTab: React.FC<{
                 )}
               </div>
               <div className="text-right shrink-0">
-                <p className="font-mono-main font-black text-xl">{formatEGP(entry.value)}</p>
-                <p className="font-mono-main text-[11px] mt-1"><DeltaText delta={delta} /></p>
+                <p className="font-mono-main font-black text-xl">{formatEGP(row.entry.value)}</p>
+                <p className="font-mono-main text-[11px] mt-1">
+                  {row.contributed !== 0 ? (
+                    <>
+                      <span className="text-ink/40">{signed(row.contributed)} {row.contributed > 0 ? 'added' : 'taken out'} · market </span>
+                      <DeltaText delta={row.market} />
+                    </>
+                  ) : (
+                    <DeltaText delta={row.delta} />
+                  )}
+                </p>
               </div>
               <div className="flex items-center gap-3 w-12 justify-end opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                <button onClick={() => setModal({ open: true, entry })} aria-label="Edit" className="text-ink/25 hover:text-ink transition-colors cursor-pointer"><Pencil size={13} /></button>
-                <button onClick={() => setEntries(removeById(entries, entry.id))} aria-label="Delete" className="text-ink/25 hover:text-rust transition-colors cursor-pointer"><Trash2 size={13} /></button>
+                <button onClick={() => setModal({ open: true, entry: row.entry })} aria-label="Edit" className="text-ink/25 hover:text-ink transition-colors cursor-pointer"><Pencil size={13} /></button>
+                <button onClick={() => setEntries(removeById(entries, row.entry.id))} aria-label="Delete" className="text-ink/25 hover:text-rust transition-colors cursor-pointer"><Trash2 size={13} /></button>
               </div>
             </ListRow>
           ))}
@@ -206,7 +247,7 @@ export const ThndrTab: React.FC<{
         isOpen={modal.open}
         onClose={() => setModal((m) => ({ ...m, open: false }))}
         initial={modal.entry}
-        lastParts={latestParts}
+        lastParts={parts}
         onSave={(entry) => setEntries(upsertById(entries, entry))}
       />
     </div>

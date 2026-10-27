@@ -8,6 +8,8 @@ export interface MoneyMove {
   bucket: keyof FinanceBuckets | null;
   /** `reconcile` marks a correction made by matching the bank's own balance. */
   mode?: 'manual' | 'reconcile';
+  /** What the movement was for, shown in the logs (e.g. 'Thndr'). */
+  category?: string;
 }
 
 const cents = (n: number) => Math.round(n * 100) / 100;

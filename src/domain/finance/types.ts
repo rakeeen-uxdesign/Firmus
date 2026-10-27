@@ -38,6 +38,17 @@ export interface Subscription {
 export type ThndrPart = 'clouds' | 'gold' | 'funds';
 export type ThndrParts = Record<ThndrPart, number>;
 
+/** Money the user moved into (deposit) or out of (withdraw) Thndr — as opposed to the portfolio growing or shrinking on its own. */
+export interface ThndrFlow {
+  id: string;
+  type: 'deposit' | 'withdraw';
+  amount: number;
+  /** Which part of the portfolio it went into / came out of. */
+  part: ThndrPart;
+  timestamp: string;      // ISO
+  note?: string;
+}
+
 export interface ThndrEntry {
   id: string;
   /** Portfolio value in EGP at that moment — the sum of `parts` when they're recorded. */
@@ -57,7 +68,7 @@ export interface FinanceLog {
   bank: string;
   bucket?: string;
   mode?: 'split' | 'manual' | 'reconcile';
-  category?: string;      // 'Salary' | 'Freelance' for split deposits
+  category?: string;      // 'Salary' | 'Freelance' for split deposits, 'Thndr' for money moved to / from Thndr
   timestamp: string;      // ISO
 }
 
