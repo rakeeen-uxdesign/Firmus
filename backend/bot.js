@@ -211,7 +211,7 @@ async function sendSubscriptionAlert(sub) {
   const dateStr = nowEgypt.toLocaleDateString('en-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   const embed = {
-    title: 'Subscription Renewal Due',
+    title: 'Payit Renewal Due',
     color: 0xF0C040, // Gold/amber
     description: `**${sub.name}** is renewing today — make sure it's covered.`,
     fields: [
@@ -219,11 +219,11 @@ async function sendSubscriptionAlert(sub) {
       { name: 'Bank', value: sub.bank || '—', inline: true },
       { name: 'Date', value: dateStr, inline: false },
     ],
-    footer: { text: 'Rakeeen · Finance · Subscriptions' },
+    footer: { text: 'Rakeeen · Finance · Payit' },
     thumbnail: { url: 'https://cdn-icons-png.flaticon.com/512/2088/2088617.png' }
   };
 
-  const altText = `**Subscription Due: ${sub.name}**\n${sub.cost.toLocaleString('en-EG')} EGP · ${sub.bank || 'Unknown'}\n${dateStr}`;
+  const altText = `**Payit Due: ${sub.name}**\n${sub.cost.toLocaleString('en-EG')} EGP · ${sub.bank || 'Unknown'}\n${dateStr}`;
   await sendDiscordEmbed(embed, altText);
 }
 

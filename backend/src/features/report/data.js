@@ -4,10 +4,15 @@
 // src/domain/** (subscriptions, thndr, insights, report) — same reason as the rest of the bot:
 // the two codebases don't share a build.
 
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+
 export const WATER_GOAL = 12;
 export const FOCUS_TARGET_MINUTES = 10 * 60;
-/** Hamed's monthly salary — mirrors MONTHLY_SALARY_EGP in src/domain/finance/defaults.ts. */
-export const MONTHLY_SALARY = 7000;
+/** Hamed's monthly salary — read from the same file the web app uses (src/constants/finance.json), so it is only ever changed in one place. */
+export const MONTHLY_SALARY = JSON.parse(
+  readFileSync(fileURLToPath(new URL('../../../../src/constants/finance.json', import.meta.url)), 'utf8'),
+).monthlySalaryEGP;
 
 const BANK_LABELS = { cib: 'CIB', ahly_main: 'Ahly Main', ahly_meeza: 'Ahly Meeza', bm: 'Banque Misr' };
 const BUCKET_LABELS = { mustaqbal: 'Future', tawarr2: "Tawarru'", basmala: 'Basmala', sadaqa: 'Sadaqa' };
@@ -194,7 +199,7 @@ export function buildHighlights({ water, focus, finance }) {
 
   const soon = finance.upcoming.filter((u) => u.daysLeft <= 3);
   if (soon.length) out.push({ tone: 'warn', text: `Renewing soon: ${soon.map((u) => `${u.name} (${countdown(u.daysLeft).toLowerCase()})`).join(', ')}.` });
-  if (finance.share.amount < 0) out.push({ tone: 'warn', text: `Hamed's Share is negative (${signedEgp(finance.share.amount)}): subscriptions cost more than the salary.` });
+  if (finance.share.amount < 0) out.push({ tone: 'warn', text: `Hamed's Share is negative (${signedEgp(finance.share.amount)}): Payit costs more than the salary.` });
   if (finance.free < 0) out.push({ tone: 'warn', text: `The buckets hold ${egp(Math.abs(finance.free))} more than the banks do.` });
 
   const t = finance.thndr;

@@ -139,7 +139,7 @@ function headlineStats(doc, report, y) {
   const cols = [
     { name: 'Water', value: `${water.glasses}`, unit: `/ ${water.goal}`, sub: water.glasses >= water.goal ? 'goal reached' : `${water.goal - water.glasses} to go` },
     { name: 'Focus', value: duration(focus.minutes), sub: `${focus.sessions} ${focus.sessions === 1 ? 'session' : 'sessions'}  ·  target ${duration(focus.targetMinutes)}` },
-    { name: "Hamed's share", value: egp(finance.share.amount).replace(' EGP', ''), unit: 'EGP', sub: `${egp(finance.share.salary).replace(' EGP', '')} less subscriptions`, color: finance.share.amount < 0 ? C.warn : C.ink },
+    { name: "Hamed's share", value: egp(finance.share.amount).replace(' EGP', ''), unit: 'EGP', sub: `${egp(finance.share.salary).replace(' EGP', '')} less Payit`, color: finance.share.amount < 0 ? C.warn : C.ink },
   ];
   const cw = W / 3;
   line(doc, M, y, M + W);
@@ -386,7 +386,7 @@ export function renderReportPdf(report) {
     };
     place(100, 'Future fund', (at) => futureFund(doc, report, at));
     place(report.finance.thndr?.parts ? 106 : 40, 'Thndr', (at) => thndr(doc, report, at));
-    place(Math.max(1, report.finance.upcoming.length) * 22 + 36, 'Subscriptions  ·  next 30 days', (at) => subscriptions(doc, report, at));
+    place(Math.max(1, report.finance.upcoming.length) * 22 + 36, 'Payit  ·  next 30 days', (at) => subscriptions(doc, report, at));
     const d = report.finance.debts;
     if (d.toMe.length || d.byMe.length) place(Math.max(d.toMe.length, d.byMe.length, 1) * 22 + 50, 'Debts', (at) => debts(doc, report, at));
     place(Math.max(1, report.logs.focus.entries.length, report.finance.today.entries.length) * 22 + 50, 'Logs', (at) => logs(doc, report, at));

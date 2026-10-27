@@ -169,7 +169,8 @@ Separate package, not part of the web build. `backend/src/features/report/` buil
 the report (pure — the finance, focus and subscription rules are ported by hand from `src/domain/`, and
 tested from the root with `npm run test:run`), `render.js` draws the PDF, `send.js` posts it. Try it without
 sending anything: `npm run report:preview` (writes a PDF to the temp folder); `npm run report:send` sends it
-now. Anything in `data.js` that mirrors `src/domain/` must be changed in both places.
+now. Anything in `data.js` that mirrors `src/domain/` must be changed in both places — except the salary, which both
+read from `src/constants/finance.json`.
 
 ## Testing & commands
 
