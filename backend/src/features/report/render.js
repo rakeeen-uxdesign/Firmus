@@ -245,10 +245,10 @@ function thndr(doc, report, y) {
   const gainPct = t.gain.percent === null ? '' : `  ${t.gain.percent >= 0 ? '+' : '-'}${Math.abs(t.gain.percent).toFixed(1)}%`;
   note(doc, `Updated ${stamp}   ·   invested ${egp(t.invested)}   ·   gain ${signedEgp(t.gain.amount)}${gainPct}`, M, y + 28, { size: 7 });
   if (!t.parts) return y + 50;
-  const colors = [C.ink, C.accent, C.soft];
+  const colors = [C.ink, C.accent, C.soft, C.muted];
   const total = THNDR_PARTS.reduce((s, [k]) => s + t.parts[k], 0);
   segments(doc, M, y + 52, W, THNDR_PARTS.map(([k], i) => ({ value: t.parts[k], color: colors[i] })));
-  const cw = W / 3;
+  const cw = W / THNDR_PARTS.length;
   THNDR_PARTS.forEach(([k, name], i) => dotLegend(doc, M + i * cw, y + 64, colors[i], name, total > 0 ? Math.round((t.parts[k] / total) * 100) : 0, egp(t.parts[k])));
   return y + 106;
 }

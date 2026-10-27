@@ -79,7 +79,7 @@ describe('buildReport', () => {
   });
   it('Thndr: latest value, its move since the previous reading, and the split', () => {
     expect(report.finance.thndr.sincePrevious.amount).toBe(1000);
-    expect(report.finance.thndr.parts).toEqual({ clouds: 6600, gold: 3200, funds: 1200 });
+    expect(report.finance.thndr.parts).toEqual({ clouds: 6600, gold: 3200, funds: 1200, wallet: 0 });
   });
   it("Hamed's Share is the salary less the monthly subscriptions", () => {
     expect(report.finance.share).toEqual({ salary: 7000, monthlySubs: 100, amount: 6900 });
@@ -117,11 +117,34 @@ describe('Thndr: money moved in is not a gain', () => {
   it('a deposit after the latest reading raises the value and that part, without a new reading', () => {
     const t = report([deposit(500, 14, 'gold')]);
     expect(t.value).toBe(12600);
-    expect(t.parts).toEqual({ clouds: 8000, gold: 3500, funds: 1100 });
+    expect(t.parts).toEqual({ clouds: 8000, gold: 3500, funds: 1100, wallet: 0 });
   });
   it('and it shows up in the future fund total', () => {
     const r = buildReport({ buckets: { mustaqbal: 0 }, thndr: entries, thndrFlows: [deposit(500, 14)] }, now);
     expect(r.finance.future.thndr).toBe(12600);
+  });
+});
+
+describe('Thndr wallet', () => {
+  const entries = [{ id: 'a', value: 10000, timestamp: '2026-10-01T10:00:00.000Z', parts: { clouds: 6000, gold: 3000, funds: 1000 } }];   // saved before the wallet existed
+  const at = (day) => `2026-10-${String(day).padStart(2, '0')}T15:00:00.000Z`;
+
+  it('cash put into the wallet counts in the value and the split', () => {
+    const flows = [{ id: '1', type: 'deposit', amount: 2000, part: 'wallet', timestamp: at(5) }];
+    const t = buildReport({ thndr: entries, thndrFlows: flows }, now).finance.thndr;
+    expect(t.value).toBe(12000);
+    expect(t.parts).toEqual({ clouds: 6000, gold: 3000, funds: 1000, wallet: 2000 });
+  });
+  it('moving it into a part changes the split only — not the value, nor what was invested', () => {
+    const flows = [
+      { id: '1', type: 'deposit', amount: 2000, part: 'wallet', timestamp: at(5) },
+      { id: '2', type: 'transfer', amount: 1500, from: 'wallet', part: 'gold', timestamp: at(6) },
+    ];
+    const t = buildReport({ thndr: entries, thndrFlows: flows }, now).finance.thndr;
+    expect(t.parts).toEqual({ clouds: 6000, gold: 4500, funds: 1000, wallet: 500 });
+    expect(t.value).toBe(12000);
+    expect(t.invested).toBe(12000);
+    expect(t.gain.amount).toBe(0);
   });
 });
 

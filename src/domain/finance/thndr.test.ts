@@ -33,7 +33,7 @@ describe('thndrRows', () => {
 
 describe('the split into clouds / gold / funds', () => {
   const withParts = (id: string, day: number, clouds: number, gold: number, funds: number): ThndrEntry => ({
-    ...e(id, clouds + gold + funds, day), parts: { clouds, gold, funds },
+    ...e(id, clouds + gold + funds, day), parts: { clouds, gold, funds, wallet: 0 },
   });
   const older = withParts('x', 3, 6000, 3000, 1000);
   const newer = withParts('y', 10, 6600, 2700, 1200);
@@ -43,13 +43,13 @@ describe('the split into clouds / gold / funds', () => {
   });
 
   it('shares add up to 100', () => {
-    expect(thndrShares({ clouds: 6000, gold: 3000, funds: 1000 })).toEqual({ clouds: 60, gold: 30, funds: 10 });
-    expect(thndrShares({ clouds: 0, gold: 0, funds: 0 })).toEqual({ clouds: 0, gold: 0, funds: 0 });
+    expect(thndrShares({ clouds: 6000, gold: 3000, funds: 1000, wallet: 0 })).toEqual({ clouds: 60, gold: 30, funds: 10, wallet: 0 });
+    expect(thndrShares({ clouds: 0, gold: 0, funds: 0, wallet: 0 })).toEqual({ clouds: 0, gold: 0, funds: 0, wallet: 0 });
   });
 
   it('per-part moves between two readings, null when one has no split', () => {
     expect(thndrPartDeltas(newer, older)).toEqual({
-      clouds: thndrDelta(6600, 6000), gold: thndrDelta(2700, 3000), funds: thndrDelta(1200, 1000),
+      clouds: thndrDelta(6600, 6000), gold: thndrDelta(2700, 3000), funds: thndrDelta(1200, 1000), wallet: thndrDelta(0, 0),
     });
     expect(thndrPartDeltas(newer, e('legacy', 1, 1))).toBeNull();
     expect(thndrPartDeltas(newer, undefined)).toBeNull();
@@ -66,8 +66,8 @@ describe('the split into clouds / gold / funds', () => {
 const flow = (id: string, type: ThndrFlow['type'], amount: number, day: number, part: ThndrFlow['part'] = 'clouds'): ThndrFlow => ({
   id, type, amount, part, timestamp: `2026-10-${String(day).padStart(2, '0')}T15:00:00.000Z`,
 });
-const partsEntry = (id: string, day: number, clouds: number, gold: number, funds: number): ThndrEntry => ({
-  ...e(id, clouds + gold + funds, day), parts: { clouds, gold, funds },
+const partsEntry = (id: string, day: number, clouds: number, gold: number, funds: number, wallet = 0): ThndrEntry => ({
+  ...e(id, clouds + gold + funds + wallet, day), parts: { clouds, gold, funds, wallet },
 });
 
 describe('netFlows', () => {
@@ -101,10 +101,10 @@ describe('currentThndrParts', () => {
   const base = [partsEntry('a', 3, 6000, 3000, 1000)];
   it('moves the part the money went into', () => {
     expect(currentThndrParts(base, [flow('1', 'deposit', 2000, 5, 'gold'), flow('2', 'withdraw', 500, 6, 'clouds')]))
-      .toEqual({ clouds: 5500, gold: 5000, funds: 1000 });
+      .toEqual({ clouds: 5500, gold: 5000, funds: 1000, wallet: 0 });
   });
   it('ignores flows already inside the reading, and is null without any split', () => {
-    expect(currentThndrParts(base, [flow('1', 'deposit', 2000, 2)])).toEqual({ clouds: 6000, gold: 3000, funds: 1000 });
+    expect(currentThndrParts(base, [flow('1', 'deposit', 2000, 2)])).toEqual({ clouds: 6000, gold: 3000, funds: 1000, wallet: 0 });
     expect(currentThndrParts(entries, [])).toBeNull();
   });
 });
@@ -143,5 +143,47 @@ describe('thndrTimeline', () => {
   it('the first reading has no previous to compare with', () => {
     const [row] = thndrTimeline([e('a', 10000, 1)], []);
     expect(row).toMatchObject({ kind: 'reading', contributed: 0, market: null });
+  });
+});
+
+describe('the wallet — cash in Thndr that is not invested yet', () => {
+  const tr = (id: string, from: ThndrFlow['part'], to: ThndrFlow['part'], amount: number, day: number): ThndrFlow => ({
+    id, type: 'transfer', amount, from, part: to, timestamp: `2026-10-${String(day).padStart(2, '0')}T15:00:00.000Z`,
+  });
+
+  it('counts in the total like any other part', () => {
+    expect(thndrPartsTotal({ clouds: 100, gold: 50, funds: 25, wallet: 25 })).toBe(200);
+  });
+
+  it('cash put into the wallet raises the value and the wallet', () => {
+    const base = [partsEntry('a', 3, 6000, 3000, 1000)];
+    const flows = [flow('1', 'deposit', 2000, 5, 'wallet')];
+    expect(currentThndrValue(base, flows)).toBe(12000);
+    expect(currentThndrParts(base, flows)).toEqual({ clouds: 6000, gold: 3000, funds: 1000, wallet: 2000 });
+  });
+
+  it('moving it into a part changes the split but not the total, nor what was invested', () => {
+    const base = [partsEntry('a', 3, 6000, 3000, 1000, 2000)];
+    const flows = [tr('1', 'wallet', 'gold', 1500, 5)];
+    expect(currentThndrParts(base, flows)).toEqual({ clouds: 6000, gold: 4500, funds: 1000, wallet: 500 });
+    expect(currentThndrValue(base, flows)).toBe(12000);
+    expect(thndrPerformance(base, flows)!.invested).toBe(12000);
+    expect(thndrPerformance(base, flows)!.gain.amount).toBe(0);
+  });
+
+  it('transfers apply in the order they happened', () => {
+    const base = [partsEntry('a', 3, 0, 0, 0, 1000)];
+    const flows = [tr('2', 'funds', 'clouds', 400, 7), tr('1', 'wallet', 'funds', 1000, 5)];   // stored out of order
+    expect(currentThndrParts(base, flows)).toEqual({ clouds: 400, gold: 0, funds: 600, wallet: 0 });
+  });
+
+  it("an older reading saved before the wallet existed reads as 0 in it", () => {
+    const legacy: ThndrEntry = { ...e('old', 9000, 3), parts: { clouds: 6000, gold: 2000, funds: 1000 } as ThndrEntry['parts'] };
+    expect(currentThndrParts([legacy], [])).toEqual({ clouds: 6000, gold: 2000, funds: 1000, wallet: 0 });
+    expect(thndrPartsTotal(legacy.parts!)).toBe(9000);
+  });
+
+  it("a transfer isn't a flow of money: it adds nothing to the net", () => {
+    expect(netFlows([tr('1', 'wallet', 'gold', 500, 5), flow('2', 'deposit', 100, 6)], null)).toBe(100);
   });
 });

@@ -4,7 +4,7 @@ import { IconPencil as Pencil, IconTrash2 as Trash2 } from '@/ui/icons';
 import { formatEGP } from '@/domain/finance/money';
 import { removeById, upsertById } from '@/domain/finance/collections';
 import {
-  THNDR_PARTS, currentThndrParts, currentThndrValue, thndrPartsTotal, thndrPerformance, thndrShares, thndrTimeline,
+  THNDR_PARTS, thndrPartLabel, currentThndrParts, currentThndrValue, thndrPartsTotal, thndrPerformance, thndrShares, thndrTimeline,
   type ThndrDelta,
 } from '@/domain/finance/thndr';
 import type { ThndrEntry, ThndrFlow, ThndrPart, ThndrParts } from '@/domain/finance/types';
@@ -45,25 +45,18 @@ const ThndrModal: React.FC<{
   lastParts: ThndrParts | null;
   onSave: (entry: ThndrEntry) => void;
 }> = ({ isOpen, onClose, initial, lastParts, onSave }) => {
-  const [parts, setParts] = useState<Record<ThndrPart, string>>({ clouds: '', gold: '', funds: '' });
+  const [parts, setParts] = useState<Record<ThndrPart, string>>({ clouds: '', gold: '', funds: '', wallet: '' });
   const [note, setNote] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
     const source = initial?.parts;
-    setParts({
-      clouds: source ? String(source.clouds) : '',
-      gold: source ? String(source.gold) : '',
-      funds: source ? String(source.funds) : '',
-    });
+    // A reading saved before the wallet existed has no wallet figure: that's 0, not a blank to fill in.
+    setParts(Object.fromEntries(THNDR_PARTS.map(({ key }) => [key, source ? String(source[key] ?? 0) : ''])) as Record<ThndrPart, string>);
     setNote(initial?.note ?? '');
   }, [isOpen, initial]);
 
-  const numbers: ThndrParts = {
-    clouds: parseFloat(parts.clouds) || 0,
-    gold: parseFloat(parts.gold) || 0,
-    funds: parseFloat(parts.funds) || 0,
-  };
+  const numbers = Object.fromEntries(THNDR_PARTS.map(({ key }) => [key, parseFloat(parts[key]) || 0])) as ThndrParts;
   const total = thndrPartsTotal(numbers);
 
   const submit = (e: React.FormEvent) => {
@@ -83,7 +76,11 @@ const ThndrModal: React.FC<{
     <AppModal isOpen={isOpen} onClose={onClose} title={initial ? 'Edit Reading' : 'Update Thndr'} raw maxWidth="max-w-sm">
       <ModalForm onSubmit={submit} submitLabel={initial ? 'Save Changes' : 'Save Reading'} disabled={total <= 0}>
         {THNDR_PARTS.map(({ key, label }, i) => (
-          <Field key={key} label={`${label} — EGP`} hint={!initial && lastParts ? `Last: ${formatEGP(lastParts[key])}` : undefined}>
+          <Field
+            key={key}
+            label={`${label} — EGP`}
+            hint={key === 'wallet' ? 'Cash sitting in Thndr, not invested yet' : !initial && lastParts ? `Last: ${formatEGP(lastParts[key])}` : undefined}
+          >
             <TextInput look="amount" type="number" step="0.01" min="0" placeholder="0" value={parts[key]} onChange={(e) => setParts((p) => ({ ...p, [key]: e.target.value }))} autoFocus={i === 0} />
           </Field>
         ))}
@@ -185,12 +182,14 @@ export const ThndrTab: React.FC<{
                 <p className="font-mono-main text-[11px] text-ink/40">› {stamp(row.flow.timestamp)}</p>
                 {row.flow.note && <p className="font-mono-main italic text-[11px] mt-1 text-ink/40">"{row.flow.note}"</p>}
                 <p className="font-mono-main text-[10px] mt-2 uppercase text-ink/40">
-                  {row.flow.type === 'deposit' ? 'Money added to' : 'Money taken out of'} {THNDR_PARTS.find((p) => p.key === row.flow.part)!.label}
+                  {row.flow.type === 'transfer'
+                    ? `Moved ${row.flow.from ? thndrPartLabel(row.flow.from) : '?'} → ${thndrPartLabel(row.flow.part)}`
+                    : `${row.flow.type === 'deposit' ? 'Money added to' : 'Money taken out of'} ${thndrPartLabel(row.flow.part)}`}
                 </p>
               </div>
               <div className="text-right shrink-0">
-                <p className="font-mono-main font-black text-xl" style={{ color: row.flow.type === 'deposit' ? ACCENT : 'var(--rust)' }}>
-                  {row.flow.type === 'deposit' ? '+' : '−'}{formatEGP(row.flow.amount)}
+                <p className="font-mono-main font-black text-xl" style={{ color: row.flow.type === 'deposit' ? ACCENT : row.flow.type === 'withdraw' ? 'var(--rust)' : undefined }}>
+                  {row.flow.type === 'deposit' ? '+' : row.flow.type === 'withdraw' ? '−' : '↔ '}{formatEGP(row.flow.amount)}
                 </p>
               </div>
               <div className="flex items-center gap-3 w-12 justify-end opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -209,10 +208,10 @@ export const ThndrTab: React.FC<{
                 {row.entry.note && <p className="font-mono-main italic text-[11px] mt-1 text-ink/40">"{row.entry.note}"</p>}
                 {row.entry.parts && (
                   <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-[10px] font-mono-main">
-                    {THNDR_PARTS.map(({ key, label }) => (
+                    {THNDR_PARTS.filter(({ key }) => key !== 'wallet' || row.entry.parts![key] || row.partDeltas?.wallet.amount).map(({ key, label }) => (
                       <span key={key} className="text-ink/40">
                         <span className="uppercase">{label} </span>
-                        <span className="text-ink/60">{formatEGP(row.entry.parts![key])}</span>
+                        <span className="text-ink/60">{formatEGP(row.entry.parts![key] || 0)}</span>
                         {row.partDeltas && row.partDeltas[key].amount !== 0 && (
                           <span style={{ color: row.partDeltas[key].amount > 0 ? 'var(--forest)' : 'var(--rust)' }}> {row.partDeltas[key].amount > 0 ? '▲' : '▼'}{formatEGP(Math.abs(row.partDeltas[key].amount))}</span>
                         )}

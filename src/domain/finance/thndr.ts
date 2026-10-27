@@ -5,9 +5,12 @@ export const THNDR_PARTS: ReadonlyArray<{ key: ThndrPart; label: string }> = [
   { key: 'clouds', label: 'Clouds' },
   { key: 'gold', label: 'Gold' },
   { key: 'funds', label: 'Funds' },
+  { key: 'wallet', label: 'Wallet' },
 ];
 
-export const EMPTY_THNDR_PARTS: ThndrParts = { clouds: 0, gold: 0, funds: 0 };
+export const EMPTY_THNDR_PARTS: ThndrParts = { clouds: 0, gold: 0, funds: 0, wallet: 0 };
+
+export const thndrPartLabel = (part: ThndrPart) => THNDR_PARTS.find((p) => p.key === part)!.label;
 
 export const thndrPartsTotal = (parts: Partial<ThndrParts>) => THNDR_PARTS.reduce((sum, { key }) => sum + (parts[key] || 0), 0);
 
@@ -62,7 +65,8 @@ export function thndrPartDeltas(newer: ThndrEntry, older: ThndrEntry | undefined
 // A reading is what the portfolio is worth; a flow is money the user put in or took out. Telling
 // them apart is what makes "gain" honest: depositing 2,000 raises the value but isn't a gain.
 
-const signedAmount = (flow: ThndrFlow) => (flow.type === 'deposit' ? flow.amount : -flow.amount);
+/** What a flow does to the portfolio's total: a deposit adds, a withdrawal subtracts, a transfer between parts changes nothing. */
+const signedAmount = (flow: ThndrFlow) => (flow.type === 'deposit' ? flow.amount : flow.type === 'withdraw' ? -flow.amount : 0);
 
 /** Net money put in (negative: taken out) by the flows after `afterIso` and up to `untilIso` (both exclusive/inclusive as named). */
 export function netFlows(flows: ThndrFlow[], afterIso: string | null, untilIso: string | null = null): number {
@@ -78,12 +82,19 @@ export function currentThndrValue(entries: ThndrEntry[], flows: ThndrFlow[]): nu
   return latest ? latest.value + netFlows(flows, latest.timestamp) : Math.max(0, netFlows(flows, null));
 }
 
-/** The split now: the latest reading that has one, moved by the flows since it. Null when there is no split to build on. */
+/** The split now: the latest reading that has one, moved by the flows since it (transfers included). Null when there is no split to build on. */
 export function currentThndrParts(entries: ThndrEntry[], flows: ThndrFlow[]): ThndrParts | null {
   const base = [...thndrSeries(entries)].reverse().find((e) => e.parts);
   if (!base) return null;
   const parts: ThndrParts = { ...EMPTY_THNDR_PARTS, ...base.parts };
-  for (const f of flows) if (f.timestamp > base.timestamp) parts[f.part] = Math.max(0, parts[f.part] + signedAmount(f));
+  for (const f of flows.filter((x) => x.timestamp > base.timestamp).sort((a, b) => a.timestamp.localeCompare(b.timestamp))) {
+    if (f.type === 'transfer') {
+      if (f.from) parts[f.from] = Math.max(0, parts[f.from] - f.amount);
+      parts[f.part] += f.amount;
+    } else {
+      parts[f.part] = Math.max(0, parts[f.part] + signedAmount(f));
+    }
+  }
   return parts;
 }
 

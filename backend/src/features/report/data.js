@@ -16,7 +16,8 @@ export const MONTHLY_SALARY = JSON.parse(
 
 const BANK_LABELS = { cib: 'CIB', ahly_main: 'Ahly Main', ahly_meeza: 'Ahly Meeza', bm: 'Banque Misr' };
 const BUCKET_LABELS = { mustaqbal: 'Future', tawarr2: "Tawarru'", basmala: 'Basmala', sadaqa: 'Sadaqa' };
-export const THNDR_PARTS = [['clouds', 'Clouds'], ['gold', 'Gold'], ['funds', 'Funds']];
+/** `wallet` is cash sitting in Thndr, not invested yet. */
+export const THNDR_PARTS = [['clouds', 'Clouds'], ['gold', 'Gold'], ['funds', 'Funds'], ['wallet', 'Wallet']];
 
 const DAY_MS = 86_400_000;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -94,7 +95,7 @@ const delta = (newer, older) => ({ amount: newer - older, percent: older === 0 ?
 /** Net money put into Thndr (negative: taken out) by the flows after `afterIso` and up to `untilIso` — see src/domain/finance/thndr.ts. */
 const netFlows = (flows, afterIso, untilIso = null) => flows
   .filter((f) => (afterIso === null || f.timestamp > afterIso) && (untilIso === null || f.timestamp <= untilIso))
-  .reduce((s, f) => s + (f.type === 'deposit' ? f.amount : -f.amount), 0);
+  .reduce((s, f) => s + (f.type === 'deposit' ? f.amount : f.type === 'withdraw' ? -f.amount : 0), 0);   // a transfer between parts moves no money in or out
 
 /**
  * The Thndr portfolio now. A reading is what it's worth; a flow is money the user moved in or out,
@@ -113,7 +114,16 @@ function buildThndr(entries, flows, now) {
 
   const base = [...series].reverse().find((e) => e.parts);
   const parts = base ? Object.fromEntries(THNDR_PARTS.map(([k]) => [k, base.parts[k] || 0])) : null;
-  if (parts) for (const f of moves) if (f.timestamp > base.timestamp) parts[f.part] = Math.max(0, parts[f.part] + (f.type === 'deposit' ? f.amount : -f.amount));
+  if (parts) {
+    for (const f of moves.filter((x) => x.timestamp > base.timestamp).sort(byTimeAsc)) {
+      if (f.type === 'transfer') {
+        if (f.from) parts[f.from] = Math.max(0, parts[f.from] - f.amount);
+        parts[f.part] += f.amount;
+      } else {
+        parts[f.part] = Math.max(0, parts[f.part] + (f.type === 'deposit' ? f.amount : -f.amount));
+      }
+    }
+  }
 
   return {
     value,

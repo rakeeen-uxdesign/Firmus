@@ -35,16 +35,20 @@ export interface Subscription {
 
 /** One reading of the Thndr portfolio's value, typed in by hand (Thndr has no API to read it from). */
 /** What the money inside Thndr is split across. */
-export type ThndrPart = 'clouds' | 'gold' | 'funds';
+/** `wallet` is the cash sitting in Thndr that hasn't been invested yet. */
+export type ThndrPart = 'clouds' | 'gold' | 'funds' | 'wallet';
 export type ThndrParts = Record<ThndrPart, number>;
 
-/** Money the user moved into (deposit) or out of (withdraw) Thndr — as opposed to the portfolio growing or shrinking on its own. */
+/** Money the user moved into (deposit) or out of (withdraw) Thndr, or between its parts — as opposed to the portfolio growing or shrinking on its own. */
 export interface ThndrFlow {
   id: string;
-  type: 'deposit' | 'withdraw';
+  /** `transfer` moves money between two parts inside Thndr (wallet → funds, say): the total doesn't change. */
+  type: 'deposit' | 'withdraw' | 'transfer';
   amount: number;
-  /** Which part of the portfolio it went into / came out of. */
+  /** Which part of the portfolio it went into / came out of (for a transfer: where it went). */
   part: ThndrPart;
+  /** A transfer's source part. */
+  from?: ThndrPart;
   timestamp: string;      // ISO
   note?: string;
 }
