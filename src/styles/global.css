@@ -332,11 +332,6 @@ html {
   to { transform: rotate(360deg); }
 }
 
-@keyframes dotPulse {
-  0%, 100% { opacity: 0.7; }
-  50%       { opacity: 1; }
-}
-
 body.dark-theme .prayer-card-inactive,
 body.dark-theme .calendar-card-inactive {
   background-color: var(--bg) !important;

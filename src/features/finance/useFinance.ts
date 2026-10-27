@@ -30,17 +30,16 @@ export function useFinance() {
   // would have zeroed every other bucket's real balance along with it.
   useEffect(() => {
     if (!buckets) return;
-    const staleKeys = Object.keys(buckets).filter(k => !VALID_BUCKET_KEYS.has(k));
-    if (staleKeys.length > 0) {
-      const cleaned = { ...buckets };
-      for (const k of staleKeys) delete (cleaned as Record<string, number>)[k];
-      setBuckets({ ...EMPTY_BUCKETS, ...cleaned });
-    }
-  }, [buckets]);
+    const staleKeys = Object.keys(buckets).filter((key) => !VALID_BUCKET_KEYS.has(key));
+    if (staleKeys.length === 0) return;
+    const cleaned: Record<string, number> = { ...buckets };
+    for (const key of staleKeys) delete cleaned[key];
+    setBuckets({ ...EMPTY_BUCKETS, ...cleaned });
+  }, [buckets, setBuckets]);
 
-  // The reminder bot reads subscriptions from Firestore itself (on start, then every 30 minutes);
-  // this just tells it about an edit straight away. Best-effort — the bot is optional and often
-  // off, so a failed push is ignored, and nothing is pushed on load.
+  // The reminder bot keeps its own copy of the list (in memory and in a file), so every edit is
+  // pushed to it straight away. Best-effort — the bot is optional and often off, so a failed push is
+  // ignored, and nothing is pushed on load.
   const setSubscriptions = async (next: Subscription[]) => {
     await setSubscriptionsSynced(next);
     fetch(`${BACKEND_URL}/api/subscriptions/sync`, {
@@ -50,25 +49,18 @@ export function useFinance() {
     }).catch(() => {});
   };
 
-  const updateBankBalance = async (bankKey: keyof FinanceBanks, amount: number) => {
-    await setBanks({ ...banks, [bankKey]: amount });
-  };
+  // Functional updates, so two changes in a row build on each other instead of on a stale render.
+  const updateBankBalance = (bankKey: keyof FinanceBanks, amount: number) =>
+    setBanks((current) => ({ ...current, [bankKey]: amount }));
 
-  const updateBucketBalance = async (bucketKey: keyof FinanceBuckets, amount: number) => {
-    await setBuckets({ ...buckets, [bucketKey]: amount });
-  };
+  const updateBucketBalance = (bucketKey: keyof FinanceBuckets, amount: number) =>
+    setBuckets((current) => ({ ...current, [bucketKey]: amount }));
 
-  const removeLog = async (id: string) => {
-    await setLogs(prev => (prev || []).filter(l => l.id !== id));
-  };
+  const removeLog = (id: string) => setLogs((current) => (current || []).filter((log) => log.id !== id));
 
-  const addLog = async (entry: Omit<FinanceLog, 'id' | 'timestamp'>) => {
-    const log: FinanceLog = {
-      ...entry,
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-    };
-    await setLogs(prev => [log, ...(prev || [])]);
+  const addLog = (entry: Omit<FinanceLog, 'id' | 'timestamp'>) => {
+    const log: FinanceLog = { ...entry, id: crypto.randomUUID(), timestamp: new Date().toISOString() };
+    return setLogs((current) => [log, ...(current || [])]);
   };
 
   return {

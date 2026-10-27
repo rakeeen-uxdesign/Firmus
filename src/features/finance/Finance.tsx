@@ -8,13 +8,13 @@ import { applyMove, urgentDebtFor, type MoneyMove } from '@/domain/finance/moves
 import {
   BUCKET_ORDER, applyAssignment, applyIncome, freeMoneyOf, remainderOf, repayUrgent, toPercentages,
 } from '@/domain/finance/split';
+import { currentThndrParts, currentThndrValue } from '@/domain/finance/thndr';
 import type { Debt } from '@/domain/finance/types';
 import { BANK_LABELS, BUCKET_META } from '@/features/finance/components/visuals';
 import { OverviewTab, type FinanceTab } from '@/features/finance/components/OverviewTab';
 import { GoldTab } from '@/features/finance/components/GoldTab';
 import { ThndrTab } from '@/features/finance/components/ThndrTab';
 import { ThndrMoneyModal, type ThndrMoneyDraft } from '@/features/finance/components/ThndrMoneyModal';
-import { currentThndrParts, currentThndrValue } from '@/domain/finance/thndr';
 import { SubscriptionsTab } from '@/features/finance/components/SubscriptionsTab';
 import { DebtModal, DebtsTab } from '@/features/finance/components/DebtsTab';
 import { LogsTab } from '@/features/finance/components/LogsTab';
@@ -114,6 +114,9 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
 
   const handleSplit = (result: SplitResult) => (result.kind === 'income' ? receiveIncome(result) : assignToBuckets(result));
 
+  const thndrEntries = thndr ?? [];
+  const thndrMoves = thndrFlows ?? [];
+
   return (
     <div className="min-h-screen bg-bg text-ink py-6 md:py-12 px-6 md:px-12 lg:px-20 font-sans-main transition-colors duration-300">
 
@@ -152,7 +155,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
             buckets={buckets}
             gold={gold ?? []}
             goldPrices={goldPrices}
-            thndrValue={currentThndrValue(thndr ?? [], thndrFlows ?? [])}
+            thndrValue={currentThndrValue(thndrEntries, thndrMoves)}
             subscriptions={subscriptions ?? []}
             debts={debts ?? []}
             privacyMode={privacyMode}
@@ -167,9 +170,9 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         )}
         {tab === 'thndr' && (
           <ThndrTab
-            entries={thndr ?? []}
+            entries={thndrEntries}
             setEntries={setThndr}
-            flows={thndrFlows ?? []}
+            flows={thndrMoves}
             setFlows={setThndrFlows}
             onAddMoney={() => setThndrMoneyOpen(true)}
           />
@@ -213,8 +216,8 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
         onClose={() => setThndrMoneyOpen(false)}
         banks={banks}
         buckets={buckets}
-        parts={currentThndrParts(thndr ?? [], thndrFlows ?? [])}
-        value={currentThndrValue(thndr ?? [], thndrFlows ?? [])}
+        parts={currentThndrParts(thndrEntries, thndrMoves)}
+        value={currentThndrValue(thndrEntries, thndrMoves)}
         onConfirm={handleThndrMoney}
       />
 

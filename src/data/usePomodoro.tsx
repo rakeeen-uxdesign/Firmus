@@ -132,7 +132,6 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Daily Reset handled by DailyResetManager (src/app/)
 
 
-
   const sendDiscordNotification = useCallback(async (type: 'focus_started' | 'focus_timer_up' | 'focus_complete' | 'break_complete' | 'test', data?: { duration?: number, overtime?: number }) => {
     const webhookUrl = import.meta.env.VITE_DISCORD_POMODORO_WEBHOOK;
     if (!webhookUrl) return;

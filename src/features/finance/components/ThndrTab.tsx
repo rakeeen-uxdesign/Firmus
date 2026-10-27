@@ -1,106 +1,125 @@
-import React, { useEffect, useState } from 'react';
-import { AppModal } from '@/ui/AppModal';
-import { IconPencil as Pencil, IconTrash2 as Trash2 } from '@/ui/icons';
-import { formatEGP } from '@/domain/finance/money';
+import React, { useState } from 'react';
+import { IconTrash2 as Trash2 } from '@/ui/icons';
+import { formatEGP, formatSignedEGP, formatSignedPercent } from '@/domain/finance/money';
 import { removeById, upsertById } from '@/domain/finance/collections';
 import {
-  THNDR_PARTS, thndrPartLabel, currentThndrParts, currentThndrValue, thndrPartsTotal, thndrPerformance, thndrShares, thndrTimeline,
-  type ThndrDelta,
+  THNDR_PARTS, currentThndrParts, currentThndrValue, thndrPartLabel, thndrPerformance, thndrShares, thndrTimeline,
+  type ThndrDelta, type ThndrTimelineRow,
 } from '@/domain/finance/thndr';
-import type { ThndrEntry, ThndrFlow, ThndrPart, ThndrParts } from '@/domain/finance/types';
-import { Field, ModalForm, TextInput } from '@/features/finance/components/forms';
-import { EmptyState, ListCard, ListRow } from '@/features/finance/components/lists';
+import type { ThndrEntry, ThndrFlow } from '@/domain/finance/types';
+import { ThndrReadingModal } from '@/features/finance/components/ThndrReadingModal';
+import { EmptyState, InlineActions, ListCard, ListRow } from '@/features/finance/components/lists';
 import { ActionButton } from '@/features/finance/components/ActionButton';
 import { captionLabel } from '@/features/finance/components/labels';
 
 /** The one accent Thndr gets — the same amber the Pomodoro ring uses for overtime, so it still
  *  reads as "electric" without stepping outside the app's own palette or its dark/light swap. */
 const ACCENT = 'var(--pomo-overtime)';
+const UP = 'var(--forest)';
+const DOWN = 'var(--rust)';
 
+const two = (n: number) => String(n).padStart(2, '0');
 const stamp = (iso: string) => {
   const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}`;
 };
 
-const signed = (n: number) => `${n >= 0 ? '+' : '−'}${formatEGP(Math.abs(n))}`;
-const percentLabel = (p: number | null) => (p === null ? '' : ` (${p >= 0 ? '+' : '−'}${Math.abs(p).toFixed(1)}%)`);
-
 /** ▲ in forest / ▼ in rust, with the amount and percent; a dim dash when there's nothing to compare. */
-const DeltaText: React.FC<{ delta: ThndrDelta | null }> = ({ delta }) => {
+const Delta: React.FC<{ delta: ThndrDelta | null }> = ({ delta }) => {
   if (!delta) return <span className="text-ink/25">——</span>;
-  const up = delta.amount >= 0;
   return (
-    <span style={{ color: up ? 'var(--forest)' : 'var(--rust)' }}>
-      {up ? '▲' : '▼'} {signed(delta.amount)}{percentLabel(delta.percent)}
+    <span style={{ color: delta.amount >= 0 ? UP : DOWN }}>
+      {delta.amount >= 0 ? '▲' : '▼'} {formatSignedEGP(delta.amount)}{delta.percent === null ? '' : ` (${formatSignedPercent(delta.percent)})`}
     </span>
   );
 };
 
-/** Add and edit share one form: pass `initial` to edit. The total is the sum of the parts; a new reading is stamped with the time it's saved. */
-const ThndrModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  initial: ThndrEntry | null;
-  lastParts: ThndrParts | null;
-  onSave: (entry: ThndrEntry) => void;
-}> = ({ isOpen, onClose, initial, lastParts, onSave }) => {
-  const [parts, setParts] = useState<Record<ThndrPart, string>>({ clouds: '', gold: '', funds: '', wallet: '' });
-  const [note, setNote] = useState('');
+const Stamp: React.FC<{ iso: string; note?: string }> = ({ iso, note }) => (
+  <>
+    <p className="font-mono-main text-[11px] text-ink/40">› {stamp(iso)}</p>
+    {note && <p className="font-mono-main italic text-[11px] mt-1 text-ink/40">"{note}"</p>}
+  </>
+);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const source = initial?.parts;
-    // A reading saved before the wallet existed has no wallet figure: that's 0, not a blank to fill in.
-    setParts(Object.fromEntries(THNDR_PARTS.map(({ key }) => [key, source ? String(source[key] ?? 0) : ''])) as Record<ThndrPart, string>);
-    setNote(initial?.note ?? '');
-  }, [isOpen, initial]);
+const flowSummary = (flow: ThndrFlow) =>
+  flow.type === 'transfer'
+    ? `Moved ${flow.from ? thndrPartLabel(flow.from) : '?'} → ${thndrPartLabel(flow.part)}`
+    : `${flow.type === 'deposit' ? 'Money added to' : 'Money taken out of'} ${thndrPartLabel(flow.part)}`;
 
-  const numbers = Object.fromEntries(THNDR_PARTS.map(({ key }) => [key, parseFloat(parts[key]) || 0])) as ThndrParts;
-  const total = thndrPartsTotal(numbers);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (THNDR_PARTS.some(({ key }) => numbers[key] < 0)) return;
-    onSave({
-      id: initial?.id ?? crypto.randomUUID(),
-      value: total,
-      parts: numbers,
-      timestamp: initial?.timestamp ?? new Date().toISOString(),
-      ...(note.trim() ? { note: note.trim() } : {}),
-    });
-    onClose();
-  };
-
+/** Money the user moved in, out, or between parts — never a gain, so it has its own row. */
+const FlowRow: React.FC<{ flow: ThndrFlow; first: boolean; onRemove: () => void }> = ({ flow, first, onRemove }) => {
+  const color = flow.type === 'deposit' ? ACCENT : flow.type === 'withdraw' ? DOWN : undefined;
+  const sign = flow.type === 'deposit' ? '+' : flow.type === 'withdraw' ? '−' : '↔ ';
   return (
-    <AppModal isOpen={isOpen} onClose={onClose} title={initial ? 'Edit Reading' : 'Update Thndr'} raw maxWidth="max-w-sm">
-      <ModalForm onSubmit={submit} submitLabel={initial ? 'Save Changes' : 'Save Reading'} disabled={total <= 0}>
-        {THNDR_PARTS.map(({ key, label }, i) => (
-          <Field
-            key={key}
-            label={`${label} — EGP`}
-            hint={key === 'wallet' ? 'Cash sitting in Thndr, not invested yet' : !initial && lastParts ? `Last: ${formatEGP(lastParts[key])}` : undefined}
-          >
-            <TextInput look="amount" type="number" step="0.01" min="0" placeholder="0" value={parts[key]} onChange={(e) => setParts((p) => ({ ...p, [key]: e.target.value }))} autoFocus={i === 0} />
-          </Field>
-        ))}
-        <div className="flex items-baseline justify-between border-t border-ink/12 pt-4">
-          <span className="font-mono-main text-[10px] uppercase tracking-[0.25em] text-ink/40">Total</span>
-          <span className="font-mono-main text-xl font-black">{formatEGP(total)}</span>
-        </div>
-        <Field label="Note" optional>
-          <TextInput type="text" placeholder="e.g. after buying a fund" value={note} onChange={(e) => setNote(e.target.value)} />
-        </Field>
-      </ModalForm>
-    </AppModal>
+    <ListRow first={first}>
+      <div className="flex-1 min-w-0">
+        <Stamp iso={flow.timestamp} note={flow.note} />
+        <p className="font-mono-main text-[10px] mt-2 uppercase text-ink/40">{flowSummary(flow)}</p>
+      </div>
+      <p className="font-mono-main font-black text-xl text-right shrink-0" style={{ color }}>{sign}{formatEGP(flow.amount)}</p>
+      <div className="flex items-center gap-3 w-12 justify-end opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <button
+          onClick={onRemove}
+          aria-label="Delete"
+          data-tip="Removes the record only — your bank balance isn't changed"
+          className="text-ink/25 hover:text-rust transition-colors cursor-pointer"
+        ><Trash2 size={13} /></button>
+      </div>
+    </ListRow>
   );
 };
 
+type ReadingRowData = Extract<ThndrTimelineRow, { kind: 'reading' }>;
+
+/** What Thndr showed at a moment: the total, each part, and how it moved — split into money added and the market's own move. */
+const ReadingRow: React.FC<{ row: ReadingRowData; first: boolean; onEdit: () => void; onRemove: () => void }> = ({ row, first, onEdit, onRemove }) => {
+  const { entry, partDeltas } = row;
+  // An empty wallet isn't worth a line on every reading.
+  const shownParts = THNDR_PARTS.filter(({ key }) => key !== 'wallet' || entry.parts?.wallet || partDeltas?.wallet.amount);
+  return (
+    <ListRow first={first}>
+      <div className="flex-1 min-w-0">
+        <Stamp iso={entry.timestamp} note={entry.note} />
+        {entry.parts && (
+          <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-[10px] font-mono-main">
+            {shownParts.map(({ key, label }) => {
+              const move = partDeltas?.[key].amount ?? 0;
+              return (
+                <span key={key} className="text-ink/40">
+                  <span className="uppercase">{label} </span>
+                  <span className="text-ink/60">{formatEGP(entry.parts![key] || 0)}</span>
+                  {move !== 0 && <span style={{ color: move > 0 ? UP : DOWN }}> {move > 0 ? '▲' : '▼'}{formatEGP(Math.abs(move))}</span>}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="text-right shrink-0">
+        <p className="font-mono-main font-black text-xl">{formatEGP(entry.value)}</p>
+        <p className="font-mono-main text-[11px] mt-1">
+          {row.contributed === 0 ? (
+            <Delta delta={row.delta} />
+          ) : (
+            <>
+              <span className="text-ink/40">{formatSignedEGP(row.contributed)} {row.contributed > 0 ? 'added' : 'taken out'} · market </span>
+              <Delta delta={row.market} />
+            </>
+          )}
+        </p>
+      </div>
+      <InlineActions onEdit={onEdit} onRemove={onRemove} />
+    </ListRow>
+  );
+};
+
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
 /**
- * Thndr has no API, so its value is a log of readings typed in by hand, split into clouds, gold
- * and funds — plus the money moved in and out, kept apart so a deposit never counts as a gain.
- * Same card system as the rest of Finance (Gold, Debts, …), with one accent colour and a couple
- * of terminal-ish touches (">" captions, THNDR.EXE) as the only nod to where this screen started.
+ * Thndr has no API, so its value is a log of readings typed in by hand, split into clouds, gold,
+ * funds and the wallet — plus the money moved in and out, kept apart so a deposit never counts as a
+ * gain. Same card system as the rest of Finance (Gold, Debts, …), with one accent colour and a
+ * couple of terminal-ish touches (">" captions, THNDR.EXE) as the only nod to where this screen started.
  */
 export const ThndrTab: React.FC<{
   entries: ThndrEntry[];
@@ -110,14 +129,14 @@ export const ThndrTab: React.FC<{
   /** Opens the money in / out form, which lives in Finance because it can move a bank balance too. */
   onAddMoney: () => void;
 }> = ({ entries, setEntries, flows, setFlows, onAddMoney }) => {
-  const [modal, setModal] = useState<{ open: boolean; entry: ThndrEntry | null }>({ open: false, entry: null });
+  const [editing, setEditing] = useState<{ open: boolean; entry: ThndrEntry | null }>({ open: false, entry: null });
 
   const timeline = thndrTimeline(entries, flows);
-  const current = currentThndrValue(entries, flows);
+  const value = currentThndrValue(entries, flows);
   const parts = currentThndrParts(entries, flows);
   const shares = parts ? thndrShares(parts) : null;
   const performance = thndrPerformance(entries, flows);
-  const hasAnything = entries.length > 0 || flows.length > 0;
+  const hasRecords = entries.length > 0 || flows.length > 0;
 
   return (
     <div className="space-y-6">
@@ -127,14 +146,12 @@ export const ThndrTab: React.FC<{
           <div className="flex items-center justify-between">
             <p className={captionLabel}>Thndr.exe — portfolio value<span className="thndr-cursor ml-0.5" style={{ color: ACCENT }}>_</span></p>
             <p className="font-mono-main text-[9px] uppercase tracking-[0.2em] text-ink/25">
-              {entries.length} {entries.length === 1 ? 'reading' : 'readings'} · {flows.length} {flows.length === 1 ? 'move' : 'moves'}
+              {plural(entries.length, 'reading')} · {plural(flows.length, 'move')}
             </p>
           </div>
-          <div>
-            <p className="font-mono-main text-4xl font-black" style={{ color: hasAnything ? ACCENT : undefined }}>
-              {hasAnything ? formatEGP(current) : <span className="text-ink/25">—</span>}
-            </p>
-          </div>
+          <p className="font-mono-main text-4xl font-black" style={{ color: hasRecords ? ACCENT : undefined }}>
+            {hasRecords ? formatEGP(value) : <span className="text-ink/25">—</span>}
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
             <div>
               <p className={`${captionLabel} mb-1`}>Invested</p>
@@ -142,7 +159,7 @@ export const ThndrTab: React.FC<{
             </div>
             <div>
               <p className={`${captionLabel} mb-1`}>Gain</p>
-              <p className="font-mono-main text-[13px]"><DeltaText delta={performance?.gain ?? null} /></p>
+              <p className="font-mono-main text-[13px]"><Delta delta={performance?.gain ?? null} /></p>
             </div>
           </div>
         </div>
@@ -168,7 +185,7 @@ export const ThndrTab: React.FC<{
         <p className={captionLabel}>Records</p>
         <div className="flex items-center gap-4">
           <ActionButton onClick={onAddMoney}>Money in / out</ActionButton>
-          <ActionButton tone="solid" onClick={() => setModal({ open: true, entry: null })}>Update value</ActionButton>
+          <ActionButton tone="solid" onClick={() => setEditing({ open: true, entry: null })}>Update value</ActionButton>
         </div>
       </div>
 
@@ -176,76 +193,24 @@ export const ThndrTab: React.FC<{
         <EmptyState>Nothing yet — "Update value" records what Thndr shows; "Money in / out" records money you moved.</EmptyState>
       ) : (
         <ListCard>
-          {timeline.map((row, i) => row.kind === 'flow' ? (
-            <ListRow key={row.flow.id} first={i === 0}>
-              <div className="flex-1 min-w-0">
-                <p className="font-mono-main text-[11px] text-ink/40">› {stamp(row.flow.timestamp)}</p>
-                {row.flow.note && <p className="font-mono-main italic text-[11px] mt-1 text-ink/40">"{row.flow.note}"</p>}
-                <p className="font-mono-main text-[10px] mt-2 uppercase text-ink/40">
-                  {row.flow.type === 'transfer'
-                    ? `Moved ${row.flow.from ? thndrPartLabel(row.flow.from) : '?'} → ${thndrPartLabel(row.flow.part)}`
-                    : `${row.flow.type === 'deposit' ? 'Money added to' : 'Money taken out of'} ${thndrPartLabel(row.flow.part)}`}
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-mono-main font-black text-xl" style={{ color: row.flow.type === 'deposit' ? ACCENT : row.flow.type === 'withdraw' ? 'var(--rust)' : undefined }}>
-                  {row.flow.type === 'deposit' ? '+' : row.flow.type === 'withdraw' ? '−' : '↔ '}{formatEGP(row.flow.amount)}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 w-12 justify-end opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                <button
-                  onClick={() => setFlows(flows.filter((f) => f.id !== row.flow.id))}
-                  aria-label="Delete"
-                  data-tip="Removes the record only — your bank balance isn't changed"
-                  className="text-ink/25 hover:text-rust transition-colors cursor-pointer"
-                ><Trash2 size={13} /></button>
-              </div>
-            </ListRow>
+          {timeline.map((row, index) => row.kind === 'flow' ? (
+            <FlowRow key={row.flow.id} flow={row.flow} first={index === 0} onRemove={() => setFlows(flows.filter((f) => f.id !== row.flow.id))} />
           ) : (
-            <ListRow key={row.entry.id} first={i === 0}>
-              <div className="flex-1 min-w-0">
-                <p className="font-mono-main text-[11px] text-ink/40">› {stamp(row.entry.timestamp)}</p>
-                {row.entry.note && <p className="font-mono-main italic text-[11px] mt-1 text-ink/40">"{row.entry.note}"</p>}
-                {row.entry.parts && (
-                  <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-[10px] font-mono-main">
-                    {THNDR_PARTS.filter(({ key }) => key !== 'wallet' || row.entry.parts![key] || row.partDeltas?.wallet.amount).map(({ key, label }) => (
-                      <span key={key} className="text-ink/40">
-                        <span className="uppercase">{label} </span>
-                        <span className="text-ink/60">{formatEGP(row.entry.parts![key] || 0)}</span>
-                        {row.partDeltas && row.partDeltas[key].amount !== 0 && (
-                          <span style={{ color: row.partDeltas[key].amount > 0 ? 'var(--forest)' : 'var(--rust)' }}> {row.partDeltas[key].amount > 0 ? '▲' : '▼'}{formatEGP(Math.abs(row.partDeltas[key].amount))}</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-mono-main font-black text-xl">{formatEGP(row.entry.value)}</p>
-                <p className="font-mono-main text-[11px] mt-1">
-                  {row.contributed !== 0 ? (
-                    <>
-                      <span className="text-ink/40">{signed(row.contributed)} {row.contributed > 0 ? 'added' : 'taken out'} · market </span>
-                      <DeltaText delta={row.market} />
-                    </>
-                  ) : (
-                    <DeltaText delta={row.delta} />
-                  )}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 w-12 justify-end opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                <button onClick={() => setModal({ open: true, entry: row.entry })} aria-label="Edit" className="text-ink/25 hover:text-ink transition-colors cursor-pointer"><Pencil size={13} /></button>
-                <button onClick={() => setEntries(removeById(entries, row.entry.id))} aria-label="Delete" className="text-ink/25 hover:text-rust transition-colors cursor-pointer"><Trash2 size={13} /></button>
-              </div>
-            </ListRow>
+            <ReadingRow
+              key={row.entry.id}
+              row={row}
+              first={index === 0}
+              onEdit={() => setEditing({ open: true, entry: row.entry })}
+              onRemove={() => setEntries(removeById(entries, row.entry.id))}
+            />
           ))}
         </ListCard>
       )}
 
-      <ThndrModal
-        isOpen={modal.open}
-        onClose={() => setModal((m) => ({ ...m, open: false }))}
-        initial={modal.entry}
+      <ThndrReadingModal
+        isOpen={editing.open}
+        onClose={() => setEditing((current) => ({ ...current, open: false }))}
+        initial={editing.entry}
         lastParts={parts}
         onSave={(entry) => setEntries(upsertById(entries, entry))}
       />
