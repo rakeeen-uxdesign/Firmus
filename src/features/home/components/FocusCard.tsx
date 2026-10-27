@@ -75,7 +75,8 @@ export const FocusCardBody: React.FC<{
             <button
               onClick={onResume}
               className="w-12 h-12 border border-ink flex items-center justify-center transition-all bg-ink text-paper hover:opacity-90 cursor-pointer"
-              title="Resume"
+              data-tip="Resume"
+              aria-label="Resume"
             >
               <Play size={18} />
             </button>
@@ -108,7 +109,7 @@ export const FocusCardBody: React.FC<{
         <button
           onClick={onStart}
           disabled={nightLocked || fridayLocked}
-          title={nightLocked ? 'Reopens at Fajr' : fridayLocked ? 'Include today from the Water page first' : undefined}
+          data-tip={nightLocked ? 'Reopens at Fajr' : fridayLocked ? 'Include today from the Water page first' : undefined}
           className="btn-brutalist shrink-0 flex items-center gap-2 px-5 py-3 text-sm disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">

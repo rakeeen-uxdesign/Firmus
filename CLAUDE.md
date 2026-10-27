@@ -107,5 +107,7 @@ weight (encodes a data value), and `CustomCursor`'s shape outline.
   `features/finance/`) — promote the shared thing to `domain/`, `ui/`, or `lib/`.
 - Don't hand-roll a boxed tab/segmented control or a day/month/year button group —
   use `ui/Tabs` (navigation) or `ui/FilterSelect` (filtering a list or chart).
+- Don't use the browser's native `title="…"` for a hover hint — put `data-tip="…"` on the element
+  (`ui/TooltipLayer.tsx` draws it in the app's own style); an icon-only button also needs an `aria-label`.
 - Don't commit with a dev-auth bypass still active, or with `.env.local` /
   secrets in the diff.

@@ -130,6 +130,10 @@ all work and follow dark mode on their own. Add a new palette colour in both pla
 under the current one); `ui/FilterSelect.tsx` narrows a list or chart (a button
 that opens a short list). Don't hand-roll a boxed segmented control again.
 
+**Tooltips.** A hover hint is `data-tip="…"` on any element — never the native `title` attribute. One
+`ui/TooltipLayer.tsx`, mounted once in `App`, draws it as a dark mono chip; it tracks the pointer's position
+(not hover events), so it also works on disabled buttons.
+
 **Theme.** `lib/theme.ts` owns dark/light: `main.tsx` applies the saved choice before
 the first render (so every route starts in it), and `setTheme()` switches and saves.
 

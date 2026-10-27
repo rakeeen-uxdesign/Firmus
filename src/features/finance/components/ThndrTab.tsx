@@ -196,7 +196,7 @@ export const ThndrTab: React.FC<{
                 <button
                   onClick={() => setFlows(flows.filter((f) => f.id !== row.flow.id))}
                   aria-label="Delete"
-                  title="Removes the record only — your bank balance isn't changed"
+                  data-tip="Removes the record only — your bank balance isn't changed"
                   className="text-ink/25 hover:text-rust transition-colors cursor-pointer"
                 ><Trash2 size={13} /></button>
               </div>

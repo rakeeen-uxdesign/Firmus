@@ -601,7 +601,8 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
             <button
               onClick={() => setShowMenu(v => !v)}
               className="w-10 h-10 border border-ink flex items-center justify-center text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-              title="Menu"
+              data-tip="Menu"
+              aria-label="Menu"
             >
               <MoreVertical size={20} />
             </button>
@@ -620,7 +621,8 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   <button
                     onClick={toggleTheme}
                     className="w-10 h-10 border border-ink flex items-center justify-center text-ink hover:bg-ink/5 transition-colors cursor-pointer"
-                    title={isDark ? 'Switch to Light' : 'Switch to Dark'}
+                    data-tip={isDark ? 'Switch to Light' : 'Switch to Dark'}
+                    aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                   >
                     {isDark ? <Sun size={18} /> : <Moon size={18} />}
                   </button>
@@ -629,7 +631,8 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
                   <button
                     onClick={handleLogout}
                     className="w-10 h-10 border border-ink flex items-center justify-center text-rust hover:bg-rust/5 transition-colors cursor-pointer"
-                    title="Log out"
+                    data-tip="Log out"
+                    aria-label="Log out"
                   >
                     <LogOut size={18} />
                   </button>

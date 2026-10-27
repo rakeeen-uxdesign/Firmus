@@ -75,7 +75,8 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
               <button
                 onClick={running ? pause : start}
                 className="w-12 h-12 border border-ink/20 flex items-center justify-center text-ink/60 hover:border-ink/60 hover:text-ink transition-all cursor-pointer bg-transparent"
-                title={running ? 'Stop' : 'Resume'}
+                data-tip={running ? 'Stop' : 'Resume'}
+                aria-label={running ? 'Stop' : 'Resume'}
               >
                 {running ? <Pause size={18} /> : <Play size={18} />}
               </button>
@@ -91,7 +92,8 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
               <button
                 onClick={startNewSession}
                 className="w-12 h-12 border border-ink/20 flex items-center justify-center text-ink/30 hover:border-ink/60 hover:text-ink/60 transition-all cursor-pointer bg-transparent"
-                title="Restart from the beginning"
+                data-tip="Restart from the beginning"
+                aria-label="Restart from the beginning"
               >
                 <RotateCcw size={18} />
               </button>
@@ -103,7 +105,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
               onClick={running ? pause : start}
               disabled={!running && (fridayLocked || nightLocked)}
               className="w-12 h-12 border border-ink flex items-center justify-center transition-all bg-ink text-paper hover:opacity-90 cursor-pointer animate-none disabled:opacity-30 disabled:cursor-not-allowed"
-              title={
+              data-tip={
                 running ? 'Pause'
                 : fridayLocked ? "Include today from the Water page first"
                 : nightLocked ? "Reopens at Fajr"
@@ -115,7 +117,8 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
             <button
               onClick={reset}
               className="w-12 h-12 border border-ink/20 flex items-center justify-center text-ink/30 hover:border-ink/60 hover:text-ink/60 transition-all cursor-pointer bg-transparent"
-              title="Reset"
+              data-tip="Reset"
+              aria-label="Reset"
             >
               <RotateCcw size={18} />
             </button>

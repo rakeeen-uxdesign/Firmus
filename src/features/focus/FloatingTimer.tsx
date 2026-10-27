@@ -31,7 +31,8 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({ onNavigate }) => {
     <button
       onClick={onNavigate}
       className="fixed bottom-8 right-8 z-50 flex items-center justify-center transition-transform duration-300 hover:scale-105 hover:-translate-y-1 outline-none group bg-transparent rounded-full w-[170px] h-[170px] cursor-pointer shadow-none border-none"
-      title="Return to Pomodoro"
+      data-tip="Return to Pomodoro"
+      aria-label="Return to Pomodoro"
     >
       <div className="relative w-full h-full flex flex-col items-center justify-center gap-3">
         <PixelClock

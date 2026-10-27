@@ -63,8 +63,7 @@ export const OverviewTab: React.FC<{
           {masked(formatEGP(sumOf(banks)), 'font-mono-main text-4xl md:text-5xl font-black tracking-tight')}
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <ActionButton onClick={() => onMove({ type: 'withdraw', bank: null })}>Withdraw</ActionButton>
-          <ActionButton onClick={() => onMove({ type: 'deposit', bank: null })}>Deposit</ActionButton>
+          <ActionButton onClick={() => onMove({ type: 'deposit', bank: null })}>Money in / out</ActionButton>
           <ActionButton tone="solid" onClick={() => onSplit('income')}>Split income</ActionButton>
         </div>
       </section>
@@ -80,7 +79,7 @@ export const OverviewTab: React.FC<{
                 key={key}
                 type="button"
                 onClick={() => onMove({ type: 'deposit', bank: key })}
-                title={`Move money in ${BANK_LABELS[key]}`}
+                data-tip={`Move money in ${BANK_LABELS[key]}`}
                 className={`w-full text-left cursor-pointer group flex items-center gap-5 px-8 py-6 transition-colors hover:bg-ink/5 ${i > 0 ? `border-t border-ink/12` : ''}`}
               >
                 <div className="shrink-0 text-ink/60 group-hover:text-ink transition-colors duration-500"><Vector balance={balance} /></div>

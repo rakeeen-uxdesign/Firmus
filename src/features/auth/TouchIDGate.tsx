@@ -186,7 +186,8 @@ export const TouchIDGate: React.FC<Props> = ({ user, onCleared }) => {
       <button
         onClick={toggleTheme}
         className="absolute top-5 right-5 z-20 cursor-pointer"
-        title={isDark ? 'Switch to light' : 'Switch to dark'}
+        data-tip={isDark ? 'Switch to light' : 'Switch to dark'}
+        aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       >
         {isDark ? (
           <Sun size={18} className="text-ink/40 hover:text-ink transition-colors" />

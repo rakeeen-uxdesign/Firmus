@@ -131,18 +131,6 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Daily Reset handled by DailyResetManager (src/app/)
 
-  // Warn before leaving site while timer is running
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (running || isOvertime) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [running, isOvertime]);
-
 
 
   const sendDiscordNotification = useCallback(async (type: 'focus_started' | 'focus_timer_up' | 'focus_complete' | 'break_complete' | 'test', data?: { duration?: number, overtime?: number }) => {

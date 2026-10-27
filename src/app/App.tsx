@@ -7,6 +7,7 @@ import { Finance } from '@/features/finance/Finance';
 import { Login } from '@/features/auth/Login';
 import { TouchIDGate } from '@/features/auth/TouchIDGate';
 import { CustomCursor } from '@/ui/CustomCursor';
+import { TooltipLayer } from '@/ui/TooltipLayer';
 import { FloatingTimer } from '@/features/focus/FloatingTimer';
 import { AuthProvider, useAuth } from '@/features/auth/useAuth';
 import { PomodoroProvider } from '@/data/usePomodoro';
@@ -109,6 +110,7 @@ const App: React.FC = () => {
 
   return (
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <TooltipLayer />
       <AuthProvider>
         <PomodoroProvider>
           <AppRoutes />

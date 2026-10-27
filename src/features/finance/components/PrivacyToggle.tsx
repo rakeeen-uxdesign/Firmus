@@ -8,7 +8,7 @@ export const PrivacyToggle: React.FC<{ privateMode: boolean; onToggle: () => voi
     onClick={disabled ? undefined : onToggle}
     disabled={disabled}
     className={`flex items-center gap-2 select-none group ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
-    title={disabled ? "Always visible here" : privateMode ? 'Privacy on' : 'Privacy off'}
+    data-tip={disabled ? "Always visible here" : privateMode ? 'Privacy on' : 'Privacy off'}
   >
     <span className="font-mono-main text-[9px] uppercase tracking-widest text-ink/40 group-hover:text-ink/60 transition-colors">
       {privateMode ? 'PRIVATE' : 'VISIBLE'}
