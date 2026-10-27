@@ -16,6 +16,19 @@ dotenv.config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
+// Without a listener, an 'error' event (a dropped gateway connection, a handshake
+// timeout) is an *unhandled* EventEmitter error and crashes the whole process —
+// which is what silently killed the daily report for days: the crash let launchd
+// restart the process, but the restart's own client.login() hit a transient
+// network timeout and gave up for good (see the retry below), so every cron that
+// depends on a logged-in client (including the 20:00 report) never ran again even
+// though the process itself kept running. discord.js already reconnects on its
+// own for ordinary gateway hiccups — this just stops a rough one from taking the
+// whole bot down.
+client.on('error', (err) => {
+  console.error('⚠️ Discord client error (not fatal, discord.js will keep retrying the gateway):', err.message);
+});
+
 const CHANNEL_ID = '1501292671753523371';
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || 'PUT_YOUR_BOT_TOKEN_HERE';
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || '';
@@ -139,9 +152,16 @@ client.once('clientReady', async () => {
   console.log('⏰ Subscriptions Reminder Cron Scheduled (Cairo time, every minute)!');
 });
 
-client.login(BOT_TOKEN).catch(err => {
-  console.error("❌ Failed to login:", err.message);
-});
+// A failed login used to be permanent — a single transient timeout connecting to
+// discord.com left the bot running but disconnected from Discord forever, since
+// nothing ever tried again. This retries every 30s until it gets in.
+function loginWithRetry() {
+  client.login(BOT_TOKEN).catch(err => {
+    console.error('❌ Failed to login, retrying in 30s:', err.message);
+    setTimeout(loginWithRetry, 30_000);
+  });
+}
+loginWithRetry();
 
 client.on('interactionCreate', routeInteraction);
 
