@@ -36,7 +36,7 @@ const mondayFirst = (d) => (d.getDay() + 6) % 7;
  * app's records has for it: the daily snapshot, the Maghrib/Isha archives, and — for today — the
  * live counters. (After a day's close-out the live counter is zeroed and only the archive has it.)
  */
-function lastSevenDays(raw, now, pick) {
+function lastSevenDays(now, pick) {
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(startOfDay(now).getTime() - (6 - i) * DAY_MS);
     return { label: WEEKDAYS[date.getDay()], date, isToday: i === 6, ...pick(date, i === 6) };
@@ -44,7 +44,7 @@ function lastSevenDays(raw, now, pick) {
 }
 
 export function buildWater(raw, now) {
-  const days = lastSevenDays(raw, now, (date, isToday) => {
+  const days = lastSevenDays(now, (date, isToday) => {
     const snapshot = raw.dailyHistory?.[isoKey(date)]?.water || 0;
     const archived = raw.hydrationHistory?.[date.toDateString()] || 0;
     const live = isToday ? Number(raw.glasses) || 0 : 0;
@@ -56,7 +56,7 @@ export function buildWater(raw, now) {
 export function buildFocus(raw, now) {
   const todayIdx = mondayFirst(now);
   const liveDay = Array.isArray(raw.pomodoroWeek) && raw.pomodoroWeek.length === 7 ? raw.pomodoroWeek[todayIdx] : null;
-  const days = lastSevenDays(raw, now, (date, isToday) => {
+  const days = lastSevenDays(now, (date, isToday) => {
     const snapshot = raw.dailyHistory?.[isoKey(date)]?.focus || 0;
     const archived = raw.pomodoroHistory?.[date.toDateString()]?.minutes || 0;
     const live = isToday ? Math.round(liveDay?.minutes || 0) : 0;
@@ -137,49 +137,66 @@ function buildThndr(entries, flows, now) {
   };
 }
 
+const sumOf = (items, amountOf) => items.reduce((total, item) => total + amountOf(item), 0);
+
+/** What the gold held is worth at today's spot prices (0 when there are none). */
+export const goldValueOf = (gold, prices) =>
+  prices ? sumOf(gold || [], (g) => g.quantity * (g.carat === 24 ? prices.price24 : prices.price21)) : 0;
+
+/** The Future fund in its three forms: the bucket's cash, the gold held, and the Thndr portfolio. */
+export function futureFundOf(raw, goldPrices, now = new Date()) {
+  const cash = Number(raw.buckets?.mustaqbal) || 0;
+  const gold = goldValueOf(raw.gold, goldPrices);
+  const thndr = buildThndr(raw.thndr, raw.thndrFlows, now)?.value || 0;
+  return { cash, gold, thndr, total: cash + gold + thndr };
+}
+
+/** Subscriptions renewing within `withinDays`, soonest first. */
+function upcomingRenewals(subs, now, withinDays = 30) {
+  return subs
+    .map((sub) => ({
+      name: sub.name, cost: sub.cost, bank: sub.bank, renewalDay: sub.renewalDay,
+      daysLeft: Math.round((startOfDay(nextRenewal(sub, now)) - startOfDay(now)) / DAY_MS),
+    }))
+    .filter((renewal) => renewal.daysLeft <= withinDays)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+}
+
+function summariseDebts(debts) {
+  const biggestFirst = (type) => debts.filter((d) => d.type === type).sort((a, b) => b.amount - a.amount);
+  const toMe = biggestFirst('owed_to_me');
+  const byMe = biggestFirst('owed_by_me');
+  return {
+    owedToMe: sumOf(toMe, (d) => d.amount), owedByMe: sumOf(byMe, (d) => d.amount),
+    toMe: toMe.slice(0, 5), byMe: byMe.slice(0, 5),
+  };
+}
+
+/** Today's money in and out. Assignments only shuffle money between buckets, so they don't count. */
+function summariseToday(logs, now) {
+  const today = startOfDay(now).getTime();
+  const movements = logs.filter((l) => l.type !== 'assign' && startOfDay(new Date(l.timestamp)).getTime() === today);
+  const total = (type) => sumOf(movements.filter((l) => l.type === type), (l) => l.amount);
+  return { deposits: total('deposit'), withdrawals: total('withdraw'), entries: movements.slice(0, 8) };
+}
+
 export function buildFinance(raw, now, goldPrices) {
   const banks = Object.entries(BANK_LABELS).map(([key, label]) => ({ label, balance: Number(raw.banks?.[key]) || 0 }));
   const buckets = Object.entries(BUCKET_LABELS).map(([key, label]) => ({ key, label, balance: Number(raw.buckets?.[key]) || 0 }));
   const banksTotal = sum(raw.banks);
-  const bucketsTotal = buckets.reduce((total, bucket) => total + bucket.balance, 0);
-
-  const goldValue = (raw.gold || []).reduce((s, g) => s + (goldPrices ? g.quantity * (g.carat === 24 ? goldPrices.price24 : goldPrices.price21) : 0), 0);
-  const thndr = buildThndr(raw.thndr, raw.thndrFlows, now);
-  const cash = Number(raw.buckets?.mustaqbal) || 0;
-  const future = { cash, gold: goldValue, thndr: thndr?.value || 0, total: cash + goldValue + (thndr?.value || 0) };
-
+  const bucketsTotal = sumOf(buckets, (bucket) => bucket.balance);
   const subs = raw.subscriptions || [];
   const monthlySubs = monthlySubscriptionCost(subs);
-  const upcoming = subs
-    .map((sub) => {
-      const next = nextRenewal(sub, now);
-      return { name: sub.name, cost: sub.cost, bank: sub.bank, renewalDay: sub.renewalDay, daysLeft: Math.round((startOfDay(next) - startOfDay(now)) / DAY_MS) };
-    })
-    .filter((u) => u.daysLeft <= 30)
-    .sort((a, b) => a.daysLeft - b.daysLeft);
-
-  const debts = raw.debts || [];
-  const owed = (type) => debts.filter((d) => d.type === type).sort((a, b) => b.amount - a.amount);
-  const owedToMe = owed('owed_to_me');
-  const owedByMe = owed('owed_by_me');
-
-  const todayLogs = (raw.logs || []).filter((l) => startOfDay(new Date(l.timestamp)).getTime() === startOfDay(now).getTime());
-  const movements = todayLogs.filter((l) => l.type !== 'assign');
 
   return {
     banks, banksTotal, buckets, bucketsTotal, free: banksTotal - bucketsTotal,
-    future, thndr, goldValue,
+    future: futureFundOf(raw, goldPrices, now),
+    thndr: buildThndr(raw.thndr, raw.thndrFlows, now),
+    goldValue: goldValueOf(raw.gold, goldPrices),
     share: { salary: MONTHLY_SALARY, monthlySubs, amount: MONTHLY_SALARY - monthlySubs },
-    upcoming,
-    debts: {
-      owedToMe: owedToMe.reduce((s, d) => s + d.amount, 0), owedByMe: owedByMe.reduce((s, d) => s + d.amount, 0),
-      toMe: owedToMe.slice(0, 5), byMe: owedByMe.slice(0, 5),
-    },
-    today: {
-      deposits: movements.filter((l) => l.type === 'deposit').reduce((s, l) => s + l.amount, 0),
-      withdrawals: movements.filter((l) => l.type === 'withdraw').reduce((s, l) => s + l.amount, 0),
-      entries: movements.slice(0, 8),
-    },
+    upcoming: upcomingRenewals(subs, now),
+    debts: summariseDebts(raw.debts || []),
+    today: summariseToday(raw.logs || [], now),
   };
 }
 

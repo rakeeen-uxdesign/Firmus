@@ -168,7 +168,13 @@ outline.
 
 ## The Discord bot (`backend/`)
 
-Separate package, not part of the web build. `backend/src/features/report/` builds the **daily report**
+Separate package, not part of the web build. `bot.js` only wires things together and schedules them;
+the work lives in small modules: `src/features/` (`subscriptions` — the Payit reminders, honouring each plan's
+billing cycle; `cleanup`; `finance`/`water`/`focus` — the Discord panels; `report`), `src/lib/` (`goldPrices`,
+`alerts`, Firestore and prayer-time helpers) and `src/server.js` (the small HTTP API the web app calls).
+Their pure parts are tested from the root `npm run test:run`.
+
+`backend/src/features/report/` builds the **daily report**
 (20:00 Cairo, `bot.js`): `collect.js` reads the dashboard values from Firestore, `data.js` turns them into
 the report (pure — the finance, focus and subscription rules are ported by hand from `src/domain/`, and
 tested from the root with `npm run test:run`), `render.js` draws the PDF, `send.js` posts it. Try it without

@@ -1,7 +1,9 @@
 import { randomUUID } from 'crypto';
 import { getDashboardValue, setDashboardValue } from '../lib/firestore.js';
 import { formatEGP } from '../lib/format.js';
+import { getGoldPrices } from '../lib/goldPrices.js';
 import { card, row, ButtonStyle } from '../lib/ui.js';
+import { futureFundOf } from './report/data.js';
 
 // Kept in sync by hand with src/features/finance/components/visuals.tsx
 // (BANK_LABELS, BUCKET_META) and src/features/finance/useFinance.ts (defaults).
@@ -71,13 +73,24 @@ export async function buildBankView(bankKey) {
 }
 
 export async function buildBucketsView() {
-  const buckets = await getDashboardValue('finance_buckets', DEFAULT_BUCKETS);
+  const [buckets, gold, thndr, thndrFlows] = await Promise.all([
+    getDashboardValue('finance_buckets', DEFAULT_BUCKETS),
+    getDashboardValue('finance_gold', []),
+    getDashboardValue('finance_thndr', []),
+    getDashboardValue('finance_thndr_flows', []),
+  ]);
   const keys = Object.keys(BUCKET_LABELS);
+  // The Future bucket holds cash only; the fund as a whole also counts the gold and Thndr —
+  // the same total the Finance screen shows beside it.
+  const future = futureFundOf({ buckets, gold, thndr, thndrFlows }, getGoldPrices());
   return {
     embeds: [card({
       domain: 'finance',
       headline: "How the banks total is split — pick a bank first to move money in or out",
-      rows: keys.map((k) => [BUCKET_LABELS[k], formatEGP(buckets[k] || 0), true]),
+      rows: [
+        ...keys.map((k) => [BUCKET_LABELS[k], formatEGP(buckets[k] || 0), true]),
+        ['Future fund', `${formatEGP(future.total)} · cash + gold + Thndr`, false],
+      ],
     })],
     components: [row([{ id: 'finance:home', label: 'Back' }])],
   };

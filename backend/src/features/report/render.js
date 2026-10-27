@@ -16,6 +16,8 @@ const PAGE = { w: 595.28, h: 841.89 };
 const M = 54;
 const W = PAGE.w - M * 2;
 const BOTTOM = PAGE.h - 70;
+/** Height of one row of a list: its text and the hairline under it. */
+const ROW = 22;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,6 +52,13 @@ function figure(doc, text, x, y, size, { color = C.ink, width, align = 'left' } 
   doc.font(F.sans).fontSize(size).fillColor(color).text(text, x, y, { lineBreak: false, width, align });
 }
 
+/** A large amount with its small "EGP" beside it. */
+function bigAmount(doc, value, x, y, size, color) {
+  const digits = egp(value).replace(' EGP', '');
+  figure(doc, digits, x, y, size, { color });
+  note(doc, 'EGP', x + doc.font(F.sans).fontSize(size).widthOfString(digits) + 6, y + size * 0.58, { size: 8.5 });
+}
+
 function line(doc, x1, y, x2, { color = C.hair, weight = 0.6 } = {}) {
   doc.save().lineWidth(weight).strokeColor(color).moveTo(x1, y).lineTo(x2, y).stroke().restore();
 }
@@ -71,8 +80,8 @@ function row(doc, name, value, x, y, w, { color = C.ink, sub } = {}) {
   doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(name, x, y + 5, { lineBreak: false, width: w * 0.6 });
   if (sub) note(doc, sub, x + w * 0.45, y + 6.5, { size: 7 });
   doc.font(F.sans).fontSize(9.5).fillColor(color).text(value, x, y + 5, { lineBreak: false, width: w, align: 'right' });
-  line(doc, x, y + 22, x + w);
-  return y + 22;
+  line(doc, x, y + ROW, x + w);
+  return y + ROW;
 }
 
 /** A thin segmented line. */
@@ -139,17 +148,18 @@ function headlineStats(doc, report, y) {
   const cols = [
     { name: 'Water', value: `${water.glasses}`, unit: `/ ${water.goal}`, sub: water.glasses >= water.goal ? 'goal reached' : `${water.goal - water.glasses} to go` },
     { name: 'Focus', value: duration(focus.minutes), sub: `${focus.sessions} ${focus.sessions === 1 ? 'session' : 'sessions'}  ·  target ${duration(focus.targetMinutes)}` },
-    { name: "Hamed's share", value: egp(finance.share.amount).replace(' EGP', ''), unit: 'EGP', sub: `${egp(finance.share.salary).replace(' EGP', '')} less Payit`, color: finance.share.amount < 0 ? C.warn : C.ink },
+    { name: "Hamed's share", amount: finance.share.amount, sub: `${egp(finance.share.salary).replace(' EGP', '')} less Payit`, color: finance.share.amount < 0 ? C.warn : C.ink },
   ];
   const cw = W / 3;
   line(doc, M, y, M + W);
   cols.forEach((c, i) => {
     const x = M + i * cw;
     label(doc, c.name, x, y + 18);
-    figure(doc, c.value, x, y + 34, 30, { color: c.color });
-    if (c.unit) {
-      const vw = doc.font(F.sans).fontSize(30).widthOfString(c.value);
-      note(doc, c.unit, x + vw + 6, y + 52, { size: 8.5 });
+    if (c.amount !== undefined) {
+      bigAmount(doc, c.amount, x, y + 34, 30, c.color);
+    } else {
+      figure(doc, c.value, x, y + 34, 30);
+      if (c.unit) note(doc, c.unit, x + doc.font(F.sans).fontSize(30).widthOfString(c.value) + 6, y + 52, { size: 8.5 });
     }
     note(doc, c.sub, x, y + 78, { size: 7 });
   });
@@ -216,9 +226,7 @@ function banksAndBuckets(doc, report, y) {
 
 function futureFund(doc, report, y) {
   const f = report.finance.future;
-  figure(doc, egp(f.total).replace(' EGP', ''), M, y, 26);
-  const tw = doc.font(F.sans).fontSize(26).widthOfString(egp(f.total).replace(' EGP', ''));
-  note(doc, 'EGP', M + tw + 6, y + 15, { size: 8.5 });
+  bigAmount(doc, f.total, M, y, 26);
   const colors = [C.ink, C.soft, C.accent];
   const parts = [['Cash', f.cash], ['Gold', f.gold], ['Thndr', f.thndr]];
   segments(doc, M, y + 46, W, parts.map(([, v], i) => ({ value: v, color: colors[i] })));
@@ -233,9 +241,7 @@ function thndr(doc, report, y) {
     note(doc, 'No readings yet. Add one from Finance > Thndr.', M, y, { size: 8 });
     return y + 20;
   }
-  figure(doc, egp(t.value).replace(' EGP', ''), M, y, 26);
-  const tw = doc.font(F.sans).fontSize(26).widthOfString(egp(t.value).replace(' EGP', ''));
-  note(doc, 'EGP', M + tw + 6, y + 15, { size: 8.5 });
+  bigAmount(doc, t.value, M, y, 26);
   const move = t.sincePrevious;
   if (move) {
     const pct = move.percent === null ? '' : `  ${move.percent >= 0 ? '+' : '-'}${Math.abs(move.percent).toFixed(1)}%`;
@@ -258,15 +264,15 @@ function subscriptions(doc, report, y) {
   const s = report.finance.share;
   if (!rows.length) {
     note(doc, 'Nothing renews in the next 30 days.', M, y, { size: 8 });
-    y += 22;
+    y += ROW;
   }
   rows.forEach((r) => {
     doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(r.name, M, y + 5, { lineBreak: false, width: 200 });
     note(doc, `${r.bank || ''}  ·  day ${r.renewalDay}`, M + 190, y + 6.5, { size: 7 });
     note(doc, countdown(r.daysLeft), M + 330, y + 6.5, { size: 7.5, color: r.daysLeft <= 5 ? C.warn : C.muted });
     doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(egp(r.cost), M, y + 5, { lineBreak: false, width: W, align: 'right' });
-    line(doc, M, y + 22, M + W);
-    y += 22;
+    line(doc, M, y + ROW, M + W);
+    y += ROW;
   });
   // The month in one line
   note(doc, `Per month  ${egp(s.monthlySubs)}   ·   salary ${egp(s.salary)}   ·   left`, M, y + 12, { size: 7.5 });
@@ -274,7 +280,7 @@ function subscriptions(doc, report, y) {
   return y + 34;
 }
 
-function twoColumns(doc, y, left, right) {
+function twoColumns(y, left, right) {
   const cw = (W - 40) / 2;
   const a = left(M, y, cw);
   const b = right(M + cw + 40, y, cw);
@@ -293,7 +299,7 @@ function debts(doc, report, y) {
     doc.font(F.sansBold).fontSize(9.5).fillColor(color).text(egp(total), x, cy + 6, { lineBreak: false, width: w, align: 'right' });
     return cy + 26;
   };
-  return twoColumns(doc, y, list('Owed to me', d.toMe, d.owedToMe, C.accent), list('I owe', d.byMe, d.owedByMe, d.owedByMe > 0 ? C.warn : C.ink));
+  return twoColumns(y, list('Owed to me', d.toMe, d.owedToMe, C.accent), list('I owe', d.byMe, d.owedByMe, d.owedByMe > 0 ? C.warn : C.ink));
 }
 
 function logs(doc, report, y) {
@@ -302,12 +308,12 @@ function logs(doc, report, y) {
   const focusCol = (x, ly, w) => {
     label(doc, 'Focus sessions today', x, ly);
     let cy = ly + 14;
-    if (!focus.entries.length) { note(doc, 'None logged.', x, cy + 6, { size: 8 }); cy += 22; }
+    if (!focus.entries.length) { note(doc, 'None logged.', x, cy + 6, { size: 8 }); cy += ROW; }
     focus.entries.forEach((e) => {
       doc.font(F.mono).fontSize(8).fillColor(C.muted).text(e.time || '-', x, cy + 6, { lineBreak: false });
       doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(duration(e.minutes), x, cy + 5, { lineBreak: false, width: w, align: 'right' });
-      line(doc, x, cy + 22, x + w);
-      cy += 22;
+      line(doc, x, cy + ROW, x + w);
+      cy += ROW;
     });
     note(doc, `${focus.count} ${focus.count === 1 ? 'session' : 'sessions'}`, x, cy + 8, { size: 7.5 });
     doc.font(F.sansBold).fontSize(9.5).fillColor(C.ink).text(duration(focus.total), x, cy + 6, { lineBreak: false, width: w, align: 'right' });
@@ -316,20 +322,20 @@ function logs(doc, report, y) {
   const moneyCol = (x, ly, w) => {
     label(doc, 'Money movements today', x, ly);
     let cy = ly + 14;
-    if (!today.entries.length) { note(doc, 'None today.', x, cy + 6, { size: 8 }); cy += 22; }
+    if (!today.entries.length) { note(doc, 'None today.', x, cy + 6, { size: 8 }); cy += ROW; }
     today.entries.forEach((l) => {
       const t = new Date(l.timestamp);
       const out = l.type === 'withdraw';
       doc.font(F.mono).fontSize(8).fillColor(C.muted).text(`${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`, x, cy + 6, { lineBreak: false });
       doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(out ? 'Withdraw' : 'Deposit', x + 40, cy + 5, { lineBreak: false });
       doc.font(F.sans).fontSize(9.5).fillColor(out ? C.warn : C.accent).text(`${out ? '-' : '+'}${egp(l.amount)}`, x, cy + 5, { lineBreak: false, width: w, align: 'right' });
-      line(doc, x, cy + 22, x + w);
-      cy += 22;
+      line(doc, x, cy + ROW, x + w);
+      cy += ROW;
     });
     note(doc, `in ${egp(today.deposits)}  ·  out ${egp(today.withdrawals)}`, x, cy + 8, { size: 7.5 });
     return cy + 26;
   };
-  return twoColumns(doc, y, focusCol, moneyCol);
+  return twoColumns(y, focusCol, moneyCol);
 }
 
 function thndrReadings(doc, report, y) {
@@ -338,8 +344,8 @@ function thndrReadings(doc, report, y) {
     note(doc, stamp, M, y + 7, { size: 8 });
     if (r.delta && r.delta.amount !== 0) note(doc, signedEgp(r.delta.amount), M + 120, y + 7, { size: 7.5, color: r.delta.amount >= 0 ? C.accent : C.warn });
     doc.font(F.sans).fontSize(9.5).fillColor(C.ink).text(egp(r.value), M, y + 5, { lineBreak: false, width: W, align: 'right' });
-    line(doc, M, y + 22, M + W);
-    y += 22;
+    line(doc, M, y + ROW, M + W);
+    y += ROW;
   });
   return y;
 }
@@ -387,11 +393,11 @@ export function renderReportPdf(report) {
     };
     place(100, 'Future fund', (at) => futureFund(doc, report, at));
     place(report.finance.thndr?.parts ? 106 : 40, 'Thndr', (at) => thndr(doc, report, at));
-    place(Math.max(1, report.finance.upcoming.length) * 22 + 36, 'Payit  ·  next 30 days', (at) => subscriptions(doc, report, at));
+    place(Math.max(1, report.finance.upcoming.length) * ROW + 36, 'Payit  ·  next 30 days', (at) => subscriptions(doc, report, at));
     const d = report.finance.debts;
-    if (d.toMe.length || d.byMe.length) place(Math.max(d.toMe.length, d.byMe.length, 1) * 22 + 50, 'Debts', (at) => debts(doc, report, at));
-    place(Math.max(1, report.logs.focus.entries.length, report.finance.today.entries.length) * 22 + 50, 'Logs', (at) => logs(doc, report, at));
-    if (report.logs.thndr.length >= 2) place(report.logs.thndr.length * 22, 'Thndr readings', (at) => thndrReadings(doc, report, at));
+    if (d.toMe.length || d.byMe.length) place(Math.max(d.toMe.length, d.byMe.length, 1) * ROW + 50, 'Debts', (at) => debts(doc, report, at));
+    place(Math.max(1, report.logs.focus.entries.length, report.finance.today.entries.length) * ROW + 50, 'Logs', (at) => logs(doc, report, at));
+    if (report.logs.thndr.length >= 2) place(report.logs.thndr.length * ROW, 'Thndr readings', (at) => thndrReadings(doc, report, at));
 
     footers(doc, report);
     doc.end();
