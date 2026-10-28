@@ -170,7 +170,8 @@ outline.
 
 Separate package, not part of the web build. `bot.js` only wires things together and schedules them;
 the work lives in small modules: `src/features/` (`subscriptions` — the Payit reminders, honouring each plan's
-billing cycle; `cleanup`; `finance`/`water`/`focus` — the Discord panels; `report`), `src/lib/` (`alerts`,
+billing cycle; `cleanup`; `finance`/`water`/`focus` — the Discord panels; `focusNotifications` — the focus
+timer's messages; `report`), `src/lib/` (`alerts`,
 Firestore and prayer-time helpers) and `src/server.js` (the small HTTP API the web app calls).
 Their pure parts are tested from the root `npm run test:run`.
 
@@ -181,6 +182,14 @@ tested from the root with `npm run test:run`), `render.js` draws the PDF, `send.
 sending anything: `npm run report:preview` (writes a PDF to the temp folder); `npm run report:send` sends it
 now. Anything in `data.js` that mirrors `src/domain/` must be changed in both places — except the salary, which both
 read from `src/constants/finance.json`.
+
+## The website holds no secrets
+
+Everything compiled into the site is public, so nothing secret is a `VITE_` variable. When the app needs
+Discord to say something, it writes an event to Firestore and the bot posts it: the focus timer writes
+`focus_notification` (`usePomodoro`), and `backend/src/features/focusNotifications.js` turns it into a message
+through the webhook in `backend/.env`. The one key the site does still carry is the gold API's
+(`VITE_GOLD_API_KEY`), because the app is what fetches gold prices — see below.
 
 ## Gold prices
 

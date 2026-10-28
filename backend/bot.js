@@ -5,6 +5,7 @@ import { CONTROL_CHANNEL_ID } from './src/config.js';
 import { registerCommands } from './src/discord/commands.js';
 import { routeInteraction } from './src/discord/router.js';
 import { cleanChannel } from './src/features/cleanup.js';
+import { watchFocusNotifications } from './src/features/focusNotifications.js';
 import { sendDailyReport } from './src/features/report/send.js';
 import { remindDueSubscriptions } from './src/features/subscriptions.js';
 import { startServer } from './src/server.js';
@@ -62,3 +63,10 @@ loginWithRetry();
 
 // The HTTP API doesn't need Discord, so it starts regardless of the login.
 startServer(SERVER_PORT, () => console.log(`🌐 Webhook server running on port ${SERVER_PORT}`));
+
+// The focus timer's messages: the web app writes each event to Firestore, this posts it to Discord.
+try {
+  watchFocusNotifications(process.env.DISCORD_POMODORO_WEBHOOK_URL);
+} catch (error) {
+  console.error('❌ Could not watch the focus timer:', error.message);
+}

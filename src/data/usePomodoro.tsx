@@ -5,19 +5,8 @@ import { POMODORO_WEEKLY_MOCK } from '@/constants/mockData';
 import { getPomoTodayIdx } from '@/domain/day';
 import { getDayMoments } from '@/domain/devotion/prayer';
 import {
-  breakMinutesFor, recordSession, type FocusDayStats, type FocusLogEntry, type FocusWeekDay,
+  breakMinutesFor, recordSession, type FocusDayStats, type FocusLogEntry, type FocusNotification, type FocusWeekDay,
 } from '@/domain/focus/session';
-import { formatDurationText } from '@/lib/format';
-
-/** The slice of a Discord embed the Pomodoro webhook posts. */
-interface DiscordEmbed {
-  title: string;
-  description: string;
-  color: number;
-  fields?: Array<{ name: string; value: string; inline?: boolean }>;
-  footer: { text: string };
-  timestamp: string;
-}
 
 interface PomodoroContextType {
   timeLeft: number;
@@ -58,6 +47,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const weekStats = Array.isArray(rawWeekStats) && rawWeekStats.length === 7 ? rawWeekStats : POMODORO_WEEKLY_MOCK;
   const [logs, setLogs] = useFirebaseSync<FocusLogEntry[]>('pomodoro_logs', []);
   const [history] = useFirebaseSync<Record<string, FocusDayStats & { logs?: FocusLogEntry[] }>>('pomodoro_history', {});
+  const [, setNotification] = useFirebaseSync<FocusNotification | null>('focus_notification', null);
   const todayIdx = getPomoTodayIdx();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -132,53 +122,11 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Daily Reset handled by DailyResetManager (src/app/)
 
 
-  const sendDiscordNotification = useCallback(async (type: 'focus_started' | 'focus_timer_up' | 'focus_complete' | 'break_complete' | 'test', data?: { duration?: number, overtime?: number }) => {
-    const webhookUrl = import.meta.env.VITE_DISCORD_POMODORO_WEBHOOK;
-    if (!webhookUrl) return;
-
-    const embeds: DiscordEmbed[] = [];
-    
-    if (type === 'focus_timer_up') {
-      embeds.push({
-        title: '🔔 Focus Session Finished!',
-        description: `You finished **${formatDurationText(focusDuration)}**, take a break.`,
-        color: 0x7ca982,
-        footer: { text: 'Rakeeen Productivity System' },
-        timestamp: new Date().toISOString()
-      });
-    } else if (type === 'focus_complete') {
-      const totalMins = (data?.duration || focusDuration) + Math.floor((data?.overtime || 0) / 60);
-      embeds.push({
-        title: '🧠 Focus Session Logged',
-        description: `Excellent! You've logged **${formatDurationText(totalMins)}** of deep work.`,
-        fields: [
-          { name: 'Base Goal', value: formatDurationText(data?.duration || focusDuration), inline: true },
-          { name: 'Overtime', value: `${Math.floor((data?.overtime || 0) / 60)}m ${ (data?.overtime || 0) % 60}s`, inline: true }
-        ],
-        color: 0x7ca982,
-        footer: { text: 'Rakeeen Productivity System' },
-        timestamp: new Date().toISOString()
-      });
-    } else if (type === 'break_complete') {
-      embeds.push({
-        title: '☕ Break Time Over',
-        description: `Your break is done? Time to get back to work! 🚀`,
-        color: 0xc8a96e,
-        footer: { text: 'Rakeeen Productivity System' },
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    if (embeds.length === 0) return;
-
-    try {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ embeds })
-      });
-    } catch (e) { console.error('Discord Webhook Error:', e); }
-  }, [focusDuration, breakDuration]);
+  // Discord is told through Firestore: the bot watches this document and posts the message, so no
+  // webhook (a secret) has to ship inside the website.
+  const notifyFocus = useCallback((type: FocusNotification['type'], overtimeSeconds = 0) => {
+    void setNotification({ id: crypto.randomUUID(), type, focusMinutes: focusDuration, overtimeSeconds, at: new Date().toISOString() });
+  }, [focusDuration, setNotification]);
 
   // Core timer logic - Robust against background throttling
   const startTimeRef = useRef<number | null>(null);
@@ -203,7 +151,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (newTime <= 0) {
             if (mode === 'focus') {
               setIsOvertime(true);
-              sendDiscordNotification('focus_timer_up');
+              notifyFocus('focus_timer_up');
               // We only send a "Time's up" browser notification at 0, 
               // but we'll send the final Discord report when they actually click "Start Break"
               // to capture the full time spent.
@@ -221,14 +169,14 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               setMode('focus');
               setTimeLeft(FOCUS);
               setCheckpoint(null);
-              sendDiscordNotification('break_complete');
+              notifyFocus('break_complete');
             }
           }
         }
       }, 200);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [running, mode, isOvertime, sendDiscordNotification, FOCUS, focusDuration, setCheckpoint]);
+  }, [running, mode, isOvertime, notifyFocus, FOCUS, focusDuration, setCheckpoint]);
 
   // Periodic + on-hide checkpoint: keeps `pomodoro_checkpoint` in sync with the
   // live timer so a reload/crash restores from here instead of losing progress.
@@ -285,7 +233,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLogs(l => [{ time: nowTime, duration: focusGained }, ...l]);
     
     // Send Discord Report with full time (Base + Overtime)
-    sendDiscordNotification('focus_complete', { duration: focusDuration, overtime });
+    notifyFocus('focus_complete', overtime);
 
     const currentWeekStats = Array.isArray(weekStats) && weekStats.length === 7 ? weekStats : POMODORO_WEEKLY_MOCK;
     const updated = recordSession(currentWeekStats, todayIdx, focusGained);
@@ -300,7 +248,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       timeLeft: calculatedBreakMins * 60, overtime: 0, isOvertime: false, mode: 'break', running: true,
       writtenBy: instanceIdRef.current,
     });
-  }, [overtime, weekStats, todayIdx, setWeekStats, focusDuration, sendDiscordNotification, setCheckpoint]);
+  }, [overtime, weekStats, todayIdx, setWeekStats, focusDuration, notifyFocus, setCheckpoint]);
 
   const startNewSession = useCallback(() => {
     setMode('focus');
@@ -332,7 +280,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLogs(l => [{ time: nowTime, duration: focusGained }, ...l]);
     
     // Send Discord Report with full time (Base + Overtime)
-    sendDiscordNotification('focus_complete', { duration: focusDuration, overtime });
+    notifyFocus('focus_complete', overtime);
 
     const currentWeekStats = Array.isArray(weekStats) && weekStats.length === 7 ? weekStats : POMODORO_WEEKLY_MOCK;
     const updated = recordSession(currentWeekStats, todayIdx, focusGained);
@@ -347,7 +295,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       timeLeft: calculatedBreakMins * 60, overtime: 0, isOvertime: false, mode: 'break', running: true,
       writtenBy: instanceIdRef.current,
     });
-  }, [mode, focusDuration, timeLeft, overtime, weekStats, todayIdx, setWeekStats, sendDiscordNotification, setLogs, setCheckpoint]);
+  }, [mode, focusDuration, timeLeft, overtime, weekStats, todayIdx, setWeekStats, notifyFocus, setLogs, setCheckpoint]);
 
   // Focus is locked Isha→Fajr (Pomodoro.tsx's `nightLocked`), but that lock only blocks
   // *starting* a new session — a session already running (or sitting in overtime) when
@@ -376,7 +324,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setSessions(s => s + 1);
       const nowTime = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
       setLogs(l => [{ time: nowTime, duration: focusGained }, ...l]);
-      sendDiscordNotification('focus_complete', { duration: focusDuration, overtime: liveOvertime });
+      notifyFocus('focus_complete', liveOvertime);
       const currentWeekStats = Array.isArray(weekStats) && weekStats.length === 7 ? weekStats : POMODORO_WEEKLY_MOCK;
       const updated = recordSession(currentWeekStats, todayIdx, focusGained);
       setWeekStats(updated);
@@ -393,7 +341,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const interval = setInterval(check, 30000);
     check();
     return () => clearInterval(interval);
-  }, [mode, running, isOvertime, nightLockPrayerTimes, focusDuration, weekStats, todayIdx, setWeekStats, sendDiscordNotification, setLogs, FOCUS, setCheckpoint]);
+  }, [mode, running, isOvertime, nightLockPrayerTimes, focusDuration, weekStats, todayIdx, setWeekStats, notifyFocus, setLogs, FOCUS, setCheckpoint]);
 
   return (
     <PomodoroContext.Provider value={{

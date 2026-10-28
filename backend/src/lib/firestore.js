@@ -42,6 +42,14 @@ export async function getDashboardValue(key, fallback) {
   return data && data.value !== undefined ? data.value : fallback;
 }
 
+/** Calls `onChange` with the value now and every time it changes; returns a function that stops listening. */
+export function watchDashboardValue(key, onChange) {
+  return getDb().collection('dashboard').doc(key).onSnapshot(
+    (snap) => onChange(snap.exists && snap.data()?.value !== undefined ? snap.data().value : null),
+    (error) => console.error(`⚠️ Lost the Firestore listener for ${key}:`, error.message),
+  );
+}
+
 export async function setDashboardValue(key, value) {
   await getDb().collection('dashboard').doc(key).set({
     value,

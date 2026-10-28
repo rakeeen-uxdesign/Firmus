@@ -22,6 +22,18 @@ export interface FocusWeekDay {
   minutes?: number;
 }
 
+/** What the app tells the Discord bot happened in a focus session; the bot turns it into a message. */
+export interface FocusNotification {
+  /** Unique per event, so the bot posts each one once. */
+  id: string;
+  type: 'focus_timer_up' | 'focus_complete' | 'break_complete';
+  /** The session's goal, in minutes. */
+  focusMinutes: number;
+  /** Time past the goal, in seconds (0 unless the session ran over). */
+  overtimeSeconds: number;
+  at: string;             // ISO
+}
+
 /** One finished session in today's log. */
 export interface FocusLogEntry {
   time: string;

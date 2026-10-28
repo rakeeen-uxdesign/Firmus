@@ -3,9 +3,10 @@
 
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || '';
 
-async function postToWebhook(body) {
-  if (!WEBHOOK_URL) throw new Error('no DISCORD_WEBHOOK_URL configured');
-  const res = await fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+/** POSTs a message body to a Discord webhook; throws if Discord doesn't accept it. */
+export async function postToWebhook(url, body) {
+  if (!url) throw new Error('no webhook URL configured');
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
@@ -25,9 +26,9 @@ export async function sendEmbed(client, channelId, embed, fallbackText) {
     // The client isn't logged in or can't see the channel — try the webhook next.
   }
   try {
-    await postToWebhook({ embeds: [stamped] });
+    await postToWebhook(WEBHOOK_URL, { embeds: [stamped] });
   } catch (error) {
     console.error('❌ Failed to send the Discord embed:', error.message);
-    await postToWebhook({ content: fallbackText }).catch((e) => console.error('❌ Failed to send the text fallback:', e.message));
+    await postToWebhook(WEBHOOK_URL, { content: fallbackText }).catch((e) => console.error('❌ Failed to send the text fallback:', e.message));
   }
 }

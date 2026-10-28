@@ -109,5 +109,8 @@ weight (encodes a data value), and `CustomCursor`'s shape outline.
   use `ui/Tabs` (navigation) or `ui/FilterSelect` (filtering a list or chart).
 - Don't use the browser's native `title="…"` for a hover hint — put `data-tip="…"` on the element
   (`ui/TooltipLayer.tsx` draws it in the app's own style); an icon-only button also needs an `aria-label`.
+- Don't put a secret in a `VITE_` variable: it is compiled into the website's public JavaScript, whatever
+  GitHub Secrets does for the repo. Anything that must stay secret (a webhook, a token) is used by the bot —
+  the app writes an event to Firestore and the bot acts on it (see the focus timer's Discord messages).
 - Don't commit with a dev-auth bypass still active, or with `.env.local` /
   secrets in the diff.
