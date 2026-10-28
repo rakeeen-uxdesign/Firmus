@@ -3,7 +3,7 @@ import { DM } from '@/ui/TimerComponents';
 
 /**
  * The second Focus face — a blocky pixel-art style, swipeable alongside the
- * wavy ring (see FocusCarousel). Same DM digit bitmaps as DMTimer, just drawn
+ * wavy ring (see FocusCarousel). Same DM digit bitmaps (see TimerComponents), just drawn
  * as square pixels instead of dots, to match this style's chunkier look.
  */
 export const PixelDigits: React.FC<{ mm: string; ss: string; color: string; maxWidth?: string; height?: string; flush?: boolean }> = ({

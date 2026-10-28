@@ -1,7 +1,7 @@
 # Rakeeen Home — Architecture
 
-Personal life-dashboard PWA (water, focus/Pomodoro, prayer & Quran, fitness, finance,
-calendar) for a single user. React + TypeScript + Vite, Firebase (Firestore + Auth),
+Personal life-dashboard PWA (water, focus/Pomodoro, finance — the day's rhythm taken from the
+real prayer times) for a single user. React + TypeScript + Vite, Firebase (Firestore + Auth),
 deployed to GitHub Pages. A companion Discord bot (`backend/`) sends reminders.
 
 This document explains **how the code is organized and why**, so it stays this way
@@ -18,7 +18,7 @@ src/
   features/   one folder per screen/capability — the React layer
   ui/         design-system primitives (Card, Button, Modal, …) — no business logic
   lib/        framework-agnostic helpers with no Rakeeen rules baked in
-  constants/  static data tables (mock seeds, food DB, …)
+  constants/  static data (the Focus week's seed, the salary in finance.json, …)
   styles/     global.css — design tokens live here (see "Design system" below)
 ```
 
@@ -116,9 +116,8 @@ what they prove.
 
 Tokens (color, the brutalist card/border language, dark mode) live in
 `src/styles/global.css` as CSS custom properties. `ui/` components consume those
-tokens — they don't hardcode colors. When the visual design changes (Phase 4 of the
-current redesign work), it changes in `global.css` + `ui/`, and every feature
-inherits it automatically instead of being edited screen by screen.
+tokens — they don't hardcode colors. When the visual design changes, it changes in `global.css` + `ui/`, and every
+feature inherits it automatically instead of being edited screen by screen.
 
 **Colour classes.** The runtime palette in `global.css` (`--ink`, `--paper`, `--paper-dark`,
 `--bg`, `--sepia`, `--rust`, `--forest`, `--ink-faded`) is exposed to Tailwind through an
@@ -219,16 +218,7 @@ speculatively.
 
 ## Open items (known, deliberately deferred)
 
-- `Home.tsx` (~1060 lines) and `Finance.tsx` (~1500 lines) still mix a lot of state
-  wiring, modals, and JSX composition in one file per screen. The presentational,
-  closure-free pieces have been split out (`features/home/components/visuals.tsx`,
-  `features/finance/components/visuals.tsx`); splitting the stateful parts (tabs,
-  modals) further is higher-risk and is planned alongside the visual redesign
-  (Phase 4) rather than as a separate pass.
-- `features/calendar/CalendarResetManager.tsx` has intricate rollover logic
-  (Isha/midnight triggers, iCal parsing duplicated with `Calendar.tsx`) that hasn't
-  been extracted to `domain/` yet — it's tightly coupled to Firestore setters and
-  needs care to pull apart without changing timing.
-- `features/fitness/` calorie math hasn't been extracted yet.
-- The docs above still mention `features/calendar` and `features/fitness`; those screens no longer exist
-  (the app is Home, Water, Focus, Finance + auth).
+- `Home.tsx` (~970 lines) still mixes state wiring, modals and JSX composition in one file. Its
+  presentational, closure-free pieces are split out (`features/home/components/`); splitting the stateful
+  parts further is higher-risk and is best done alongside a visual change rather than as a separate pass.
+  (Finance is already split into one component per tab.)

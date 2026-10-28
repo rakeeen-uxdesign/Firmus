@@ -1,7 +1,7 @@
 # Rakeeen Home
 
-Personal life-dashboard for Hamed — water, focus/Pomodoro, prayer & Quran, fitness,
-finance, calendar. React + TypeScript + Vite + Firebase (Firestore + Auth), deployed
+Personal life-dashboard for Hamed — water, focus/Pomodoro and finance, with the day's
+rhythm taken from the real prayer times. React + TypeScript + Vite + Firebase (Firestore + Auth), deployed
 to GitHub Pages via `.github/workflows/deploy.yml` on push to `main`. A companion
 Discord bot lives in `backend/` (Payit reminders, the Discord panels and the daily PDF
 report — not deployed by the same workflow, run separately).
@@ -52,17 +52,13 @@ npm run typecheck       # tsc --noEmit — strict, no unused locals/params; must
 ## Things that look like bugs but are load-bearing
 
 - `getLogicalDate()` (`domain/day.ts`) rolls the "day" at 04:00, not midnight —
-  water/fitness dailies use this. Focus sessions use `getPomoLogicalDate()`
+  water and the daily snapshot use this. Focus sessions use `getPomoLogicalDate()`
   instead, which is the real calendar day (no rollback).
-- The calendar depends on `VITE_ICAL_PROXY` (a Cloudflare Worker, see
-  `docs/ical-proxy-worker.js`) to read Google Calendar — the browser can't fetch
-  it directly (no CORS headers from Google). Without the env var it falls back to
-  flaky public CORS proxies.
 - `useFirebaseSync`'s `setValue` is `useCallback`-memoized on purpose — an
   earlier version recreated it every render, which made a consumer's `useEffect`
   re-run constantly and contributed to a Firestore client crash
   (`INTERNAL ASSERTION FAILED`). Don't remove the memoization.
-- `src/lib/firebase.ts` forces `experimentalForceLongPolling` — that's the actual
+- `src/data/firebase.ts` forces `experimentalForceLongPolling` — that's the actual
   fix for the crash above. Don't revert it "to try WebSockets".
 
 ## Icon system
