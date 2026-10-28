@@ -2,6 +2,7 @@ import { collectRaw } from './collect.js';
 import { buildReport, egp, duration } from './data.js';
 import { renderReportPdf } from './render.js';
 import { card } from '../../lib/ui.js';
+import { NAME_MARKED } from '../../lib/brand.js';
 
 /**
  * Builds today's report and posts it to Discord: a short summary card, with the full report
@@ -28,7 +29,7 @@ export async function sendDailyReport(client, channelId) {
       ['Future fund', egp(finance.future.total)],
       ['Thndr', finance.thndr ? egp(finance.thndr.value) : '—'],
     ],
-    note: `Firmus · Daily report · ${report.date.time} Cairo · full report attached`,
+    note: `${NAME_MARKED} · Daily report · ${report.date.time} Cairo · full report attached`,
   });
 
   const channel = await client.channels.fetch(channelId);

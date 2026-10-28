@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendEmbed } from '../lib/alerts.js';
+import { NAME_MARKED } from '../lib/brand.js';
 
 // Payit (subscription) renewal reminders. The web app owns the list; it pushes every edit to the
 // bot, which keeps it in memory and in a small file so a restart doesn't forget it.
@@ -80,7 +81,7 @@ export async function sendSubscriptionAlert(client, channelId, sub, now = new Da
       { name: 'Bank', value: sub.bank || '—', inline: true },
       { name: 'Date', value: date, inline: false },
     ],
-    footer: { text: 'Firmus · Finance · Payit' },
+    footer: { text: `${NAME_MARKED} · Finance · Payit` },
     thumbnail: { url: 'https://cdn-icons-png.flaticon.com/512/2088/2088617.png' },
   }, `**Payit Due: ${sub.name}**\n${amount} · ${sub.bank || 'Unknown'}\n${date}`);
 }

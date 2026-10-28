@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { NAME_MARKED } from '@/constants/brand';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFirebaseSync } from '@/data/useFirebaseSync';
 import { uploadImage } from '@/lib/cloudinary';
@@ -356,7 +357,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
-    document.title = 'Firmus';
+    document.title = NAME_MARKED;
     return () => clearInterval(timer);
   }, []);
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { NAME_MARKED } from '@/constants/brand';
 import { IconArrowLeft as ArrowLeft, IconChevronRight as ChevronRight } from '@/ui/icons';
 import { Tabs } from '@/ui/Tabs';
 import { useFinance } from '@/features/finance/useFinance';
@@ -53,7 +54,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   // Refreshed at Fajr and Maghrib by `GoldPriceRefresher`; this only reads them.
   const goldPrices = useGoldPrices();
 
-  useEffect(() => { document.title = 'Firmus — Finance'; }, []);
+  useEffect(() => { document.title = `${NAME_MARKED} — Finance`; }, []);
 
   const openMove = (draft: MoveDraft) => setMoveModal({ open: true, draft });
 

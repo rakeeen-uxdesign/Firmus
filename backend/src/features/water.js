@@ -2,6 +2,7 @@ import { getDashboardValue, setDashboardValue } from '../lib/firestore.js';
 import { isWaterLocked } from '../lib/prayerTimes.js';
 import { isFriday } from '../lib/day.js';
 import { card, row, ButtonStyle } from '../lib/ui.js';
+import { NAME_MARKED } from '../lib/brand.js';
 
 const GOAL = 12;
 const GLASS_KEY = 'hydration_glasses';
@@ -30,7 +31,7 @@ export async function buildWaterView() {
         domain: 'water',
         headline: "It's Jumu'ah — Friday is opt-in system-wide.",
         big: `${glasses} / ${GOAL}`,
-        note: 'Firmus · Water · nothing logged counts until you opt in',
+        note: `${NAME_MARKED} · Water · nothing logged counts until you opt in`,
       })],
       components: [row([
         { id: 'water:fridayoptin', label: 'Count Today Anyway', style: ButtonStyle.Success },

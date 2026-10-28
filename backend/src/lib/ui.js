@@ -1,4 +1,5 @@
 import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
+import { NAME_MARKED } from './brand.js';
 
 /**
  * Firmus's Discord "design system" — the smart-home-panel look every card in
@@ -13,7 +14,7 @@ const BRAND = {
   water:   { color: 0x5EC8B0, label: 'Water' },
   focus:   { color: 0xD7EA6C, label: 'Focus' },
   finance: { color: 0xE8C04A, label: 'Finance' },
-  system:  { color: 0xC2DC3F, label: 'Firmus' },
+  system:  { color: 0xC2DC3F, label: NAME_MARKED },
 };
 
 /**
@@ -29,7 +30,8 @@ export function card({ domain, headline, big, rows = [], note }) {
   const embed = new EmbedBuilder()
     .setColor(b.color)
     .setAuthor({ name: b.label.toUpperCase() })
-    .setFooter({ text: note ?? `Firmus · ${b.label} · auto-closes in 1m` })
+    // The system card's label is the name itself — no need to say it twice.
+    .setFooter({ text: note ?? [NAME_MARKED, domain === 'system' ? null : b.label, 'auto-closes in 1m'].filter(Boolean).join(' · ') })
     .setTimestamp();
 
   const description = [big ? `## ${big}` : null, headline ?? null].filter(Boolean).join('\n');

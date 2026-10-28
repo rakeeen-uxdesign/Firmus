@@ -4,6 +4,7 @@ import { getPomoTodayIdx, isFriday } from '../lib/day.js';
 import { isFocusLocked } from '../lib/prayerTimes.js';
 import { formatDurationText, formatTime } from '../lib/format.js';
 import { card, row, ButtonStyle } from '../lib/ui.js';
+import { NAME_MARKED } from '../lib/brand.js';
 
 // Hardcoded in usePomodoro.tsx too (`focusDuration` is a fixed 25m, never user-set).
 const FOCUS_MINUTES = 25;
@@ -207,7 +208,7 @@ export function buildSessionLoggedNotice(focusGained, overtimeSeconds) {
       { name: 'Base Goal', value: formatDurationText(FOCUS_MINUTES), inline: true },
       { name: 'Overtime', value: `${Math.floor(overtimeSeconds / 60)}m ${overtimeSeconds % 60}s`, inline: true },
     )
-    .setFooter({ text: 'Firmus Productivity System' })
+    .setFooter({ text: `${NAME_MARKED} Productivity System` })
     .setTimestamp();
 }
 

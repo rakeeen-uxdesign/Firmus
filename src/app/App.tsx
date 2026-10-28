@@ -41,7 +41,7 @@ const AppRoutes: React.FC = () => {
   };
 
   // Derive current page from location
-  const currentPage = location.pathname.replace('/Rakeeen-Home', '').replace('/', '') || 'home';
+  const currentPage = location.pathname.replace('/', '') || 'home';
 
   if (loading) {
     return (

@@ -1,6 +1,7 @@
 import { watchDashboardValue } from '../lib/firestore.js';
 import { formatDurationText } from '../lib/format.js';
 import { postToWebhook } from '../lib/alerts.js';
+import { NAME_MARKED } from '../lib/brand.js';
 
 // The focus timer's messages to Discord. The web app doesn't post them itself (that would put a
 // webhook — a secret — inside the website): it writes each event to Firestore, and this turns it
@@ -9,7 +10,7 @@ import { postToWebhook } from '../lib/alerts.js';
 const KEY = 'focus_notification';
 /** An event older than this is not announced — e.g. one written while the bot was off. */
 const FRESH_FOR_MS = 2 * 60 * 1000;
-const FOOTER = { text: 'Firmus Productivity System' };
+const FOOTER = { text: `${NAME_MARKED} Productivity System` };
 const GREEN = 0x7ca982;
 const GOLD = 0xc8a96e;
 

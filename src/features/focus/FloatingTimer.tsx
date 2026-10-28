@@ -19,7 +19,7 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({ onNavigate }) => {
   const isOnPomodoro = location.pathname.includes('pomodoro');
   const displayTime = isOvertime ? `+${formatTime(overtime)}` : formatTime(timeLeft);
 
-  const isOnHome = location.pathname === '/' || location.pathname === '' || location.pathname.endsWith('Rakeeen-Home') || location.pathname.endsWith('Rakeeen-Home/');
+  const isOnHome = location.pathname === '/' || location.pathname === '';
 
   // Don't render if timer not active or already on pomodoro page
   if ((!running && !isOvertime) || isOnPomodoro) return null;

@@ -1,6 +1,6 @@
 # Firmus
 
-(The name is Firmus; the repo, the site's URL and the Firebase project are still called Rakeeen-Home.)
+(The repo and the site's URL are `Firmus`; the Firebase project is still `rakeeen-home` — a Firebase project's ID can't be renamed.)
 
 Personal life-dashboard for Hamed — water, focus/Pomodoro and finance, with the day's
 rhythm taken from the real prayer times. React + TypeScript + Vite + Firebase (Firestore + Auth), deployed
@@ -14,7 +14,7 @@ short version; that one explains the layers and the reasoning.
 ## Commands
 
 ```
-npm run dev         # local dev server (http://localhost:5173/Rakeeen-Home/)
+npm run dev         # local dev server (http://localhost:5173/Firmus/)
 npm run build         # production build — esbuild-based; this is the real smoke test
 npm run test:run       # vitest, single run
 npm run typecheck       # tsc --noEmit — strict, no unused locals/params; must stay at 0 errors
