@@ -1,7 +1,7 @@
 import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 
 /**
- * Rakeeen's Discord "design system" — the smart-home-panel look every card in
+ * Firmus's Discord "design system" — the smart-home-panel look every card in
  * this bot shares. One function builds the embed shell (`card`), one builds a
  * row of buttons (`row`). Everything else in discord/ composes these two.
  *
@@ -13,7 +13,7 @@ const BRAND = {
   water:   { color: 0x5EC8B0, label: 'Water' },
   focus:   { color: 0xD7EA6C, label: 'Focus' },
   finance: { color: 0xE8C04A, label: 'Finance' },
-  system:  { color: 0xC2DC3F, label: 'Rakeeen' },
+  system:  { color: 0xC2DC3F, label: 'Firmus' },
 };
 
 /**
@@ -29,7 +29,7 @@ export function card({ domain, headline, big, rows = [], note }) {
   const embed = new EmbedBuilder()
     .setColor(b.color)
     .setAuthor({ name: b.label.toUpperCase() })
-    .setFooter({ text: note ?? `Rakeeen · ${b.label} · auto-closes in 1m` })
+    .setFooter({ text: note ?? `Firmus · ${b.label} · auto-closes in 1m` })
     .setTimestamp();
 
   const description = [big ? `## ${big}` : null, headline ?? null].filter(Boolean).join('\n');

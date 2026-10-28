@@ -1,4 +1,5 @@
 import React from 'react';
+import { Wordmark } from '@/ui/Wordmark';
 
 interface Props {
   children: React.ReactNode;
@@ -48,7 +49,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     return (
       <div className="min-h-screen bg-paper flex flex-col items-center justify-center gap-6 px-6 text-center">
-        <div className="text-sepia font-black tracking-[0.5em] text-lg">RAKEEEN</div>
+        <Wordmark className="text-sepia font-black text-2xl" />
         <p className="font-mono-main text-xs uppercase tracking-[0.25em] text-ink/50 max-w-xs">
           Something glitched. Reloading…
         </p>

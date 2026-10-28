@@ -28,10 +28,10 @@ export async function sendDailyReport(client, channelId) {
       ['Future fund', egp(finance.future.total)],
       ['Thndr', finance.thndr ? egp(finance.thndr.value) : '—'],
     ],
-    note: `Rakeeen · Daily report · ${report.date.time} Cairo · full report attached`,
+    note: `Firmus · Daily report · ${report.date.time} Cairo · full report attached`,
   });
 
   const channel = await client.channels.fetch(channelId);
-  await channel.send({ embeds: [embed], files: [{ attachment: pdf, name: `rakeeen-report-${report.date.iso}.pdf` }] });
+  await channel.send({ embeds: [embed], files: [{ attachment: pdf, name: `firmus-report-${report.date.iso}.pdf` }] });
   console.log(`[${report.date.time}] 📄 Daily report sent (${(pdf.length / 1024).toFixed(0)} KB)`);
 }

@@ -7,7 +7,7 @@ import { collectRaw } from '../src/features/report/collect.js';
 import { buildReport } from '../src/features/report/data.js';
 import { renderReportPdf } from '../src/features/report/render.js';
 
-const output = process.argv[2] || path.join(os.tmpdir(), 'rakeeen-report-preview.pdf');
+const output = process.argv[2] || path.join(os.tmpdir(), 'firmus-report-preview.pdf');
 
 const report = buildReport(await collectRaw(), new Date());
 fs.writeFileSync(output, await renderReportPdf(report));

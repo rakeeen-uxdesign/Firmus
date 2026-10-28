@@ -30,7 +30,7 @@ export async function buildWaterView() {
         domain: 'water',
         headline: "It's Jumu'ah — Friday is opt-in system-wide.",
         big: `${glasses} / ${GOAL}`,
-        note: 'Rakeeen · Water · nothing logged counts until you opt in',
+        note: 'Firmus · Water · nothing logged counts until you opt in',
       })],
       components: [row([
         { id: 'water:fridayoptin', label: 'Count Today Anyway', style: ButtonStyle.Success },

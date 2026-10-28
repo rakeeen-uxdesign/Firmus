@@ -1,4 +1,4 @@
-# Rakeeen Home — Architecture
+# Firmus — Architecture
 
 Personal life-dashboard PWA (water, focus/Pomodoro, finance — the day's rhythm taken from the
 real prayer times) for a single user. React + TypeScript + Vite, Firebase (Firestore + Auth),

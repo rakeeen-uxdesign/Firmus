@@ -1,4 +1,4 @@
-/** Generic value formatting — no Rakeeen domain rules here. */
+/** Generic value formatting — no Firmus domain rules here. */
 
 /** Seconds → `MM:SS` (minutes grow past 99, no leading zero once ≥ 100). */
 export function formatTime(sec: number): string {

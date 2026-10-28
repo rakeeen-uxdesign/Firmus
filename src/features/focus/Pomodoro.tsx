@@ -55,7 +55,7 @@ export const Pomodoro: React.FC<PomodoroProps> = ({ navigate }) => {
   const FOCUS_S = focusDuration * 60;
   const BREAK_S = breakDuration * 60;
 
-  useEffect(() => { document.title = 'Rakeeen - Pomodoro'; }, []);
+  useEffect(() => { document.title = 'Firmus — Focus'; }, []);
 
   const getTimerColor = () => {
     if (isOvertime) return 'var(--pomo-overtime)';

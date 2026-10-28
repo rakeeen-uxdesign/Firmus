@@ -8,6 +8,7 @@ import { Login } from '@/features/auth/Login';
 import { TouchIDGate } from '@/features/auth/TouchIDGate';
 import { CustomCursor } from '@/ui/CustomCursor';
 import { TooltipLayer } from '@/ui/TooltipLayer';
+import { Wordmark } from '@/ui/Wordmark';
 import { FloatingTimer } from '@/features/focus/FloatingTimer';
 import { AuthProvider, useAuth } from '@/features/auth/useAuth';
 import { PomodoroProvider } from '@/data/usePomodoro';
@@ -45,7 +46,7 @@ const AppRoutes: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center">
-        <div className="text-sepia font-black tracking-[0.5em] animate-pulse">RAKEEEN</div>
+        <Wordmark className="text-sepia font-black text-2xl animate-pulse" />
       </div>
     );
   }

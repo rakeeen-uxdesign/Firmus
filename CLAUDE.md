@@ -1,4 +1,6 @@
-# Rakeeen Home
+# Firmus
+
+(The name is Firmus; the repo, the site's URL and the Firebase project are still called Rakeeen-Home.)
 
 Personal life-dashboard for Hamed — water, focus/Pomodoro and finance, with the day's
 rhythm taken from the real prayer times. React + TypeScript + Vite + Firebase (Firestore + Auth), deployed

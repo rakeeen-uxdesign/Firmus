@@ -26,7 +26,7 @@ export const Water: React.FC<WaterProps> = ({ navigate }) => {
   const goal = 12;
 
   React.useEffect(() => {
-    document.title = 'Rakeeen - Water';
+    document.title = 'Firmus — Water';
   }, []);
 
   // Day is archived/reset at the real Maghrib time (from the prayer API, refreshed

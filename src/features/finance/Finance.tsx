@@ -53,7 +53,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   // Refreshed at Fajr and Maghrib by `GoldPriceRefresher`; this only reads them.
   const goldPrices = useGoldPrices();
 
-  useEffect(() => { document.title = 'Rakeeen — Finance'; }, []);
+  useEffect(() => { document.title = 'Firmus — Finance'; }, []);
 
   const openMove = (draft: MoveDraft) => setMoveModal({ open: true, draft });
 

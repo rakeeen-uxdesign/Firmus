@@ -5,8 +5,8 @@ export function buildHubView() {
     embeds: [card({
       domain: 'system',
       headline: 'Tap a card to control it from here.',
-      big: 'Rakeeen Control',
-      note: 'Rakeeen · auto-closes in 1m',
+      big: 'Firmus Control',
+      note: 'Firmus · auto-closes in 1m',
     })],
     components: [row([
       { id: 'bommy:water', label: 'Water', style: ButtonStyle.Primary },

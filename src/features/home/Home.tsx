@@ -356,7 +356,7 @@ export const Home: React.FC<HomeProps> = ({ navigate }) => {
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
-    document.title = 'Rakeeen Home';
+    document.title = 'Firmus';
     return () => clearInterval(timer);
   }, []);
 

@@ -80,7 +80,7 @@ export async function sendSubscriptionAlert(client, channelId, sub, now = new Da
       { name: 'Bank', value: sub.bank || '—', inline: true },
       { name: 'Date', value: date, inline: false },
     ],
-    footer: { text: 'Rakeeen · Finance · Payit' },
+    footer: { text: 'Firmus · Finance · Payit' },
     thumbnail: { url: 'https://cdn-icons-png.flaticon.com/512/2088/2088617.png' },
   }, `**Payit Due: ${sub.name}**\n${amount} · ${sub.bank || 'Unknown'}\n${date}`);
 }

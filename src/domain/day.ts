@@ -1,5 +1,5 @@
 /**
- * Rakeeen's notion of "which day is it".
+ * Firmus's notion of "which day is it".
  *
  * Water, fitness and journalling run on a **logical day** that rolls at 04:00
  * (around Fajr), not midnight — so 00:00–03:59 still belongs to the day before.

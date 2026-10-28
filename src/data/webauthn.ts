@@ -34,7 +34,7 @@ export async function registerTouchID(userId: string, userEmail: string): Promis
   const credential = await navigator.credentials.create({
     publicKey: {
       challenge,
-      rp: { name: 'Rakeeen', id: window.location.hostname },
+      rp: { name: 'Firmus', id: window.location.hostname },
       user: {
         id: new TextEncoder().encode(userId),
         name: userEmail,

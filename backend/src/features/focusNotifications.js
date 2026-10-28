@@ -9,7 +9,7 @@ import { postToWebhook } from '../lib/alerts.js';
 const KEY = 'focus_notification';
 /** An event older than this is not announced — e.g. one written while the bot was off. */
 const FRESH_FOR_MS = 2 * 60 * 1000;
-const FOOTER = { text: 'Rakeeen Productivity System' };
+const FOOTER = { text: 'Firmus Productivity System' };
 const GREEN = 0x7ca982;
 const GOLD = 0xc8a96e;
 

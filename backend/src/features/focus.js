@@ -207,7 +207,7 @@ export function buildSessionLoggedNotice(focusGained, overtimeSeconds) {
       { name: 'Base Goal', value: formatDurationText(FOCUS_MINUTES), inline: true },
       { name: 'Overtime', value: `${Math.floor(overtimeSeconds / 60)}m ${overtimeSeconds % 60}s`, inline: true },
     )
-    .setFooter({ text: 'Rakeeen Productivity System' })
+    .setFooter({ text: 'Firmus Productivity System' })
     .setTimestamp();
 }
 

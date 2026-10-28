@@ -36,7 +36,7 @@ const ownerOnly = (builder) => builder.setDefaultMemberPermissions('0');
 
 export const commands = [
   {
-    data: ownerOnly(new SlashCommandBuilder().setName('bommy').setDescription('Open the Rakeeen control panel')),
+    data: ownerOnly(new SlashCommandBuilder().setName('bommy').setDescription('Open the Firmus control panel')),
     execute: (i) => reply(i, buildHubView()),
   },
   {
