@@ -64,7 +64,7 @@ describe('buildReport', () => {
       { id: 'l3', type: 'withdraw', amount: 50, bank: 'CIB', timestamp: new Date(2026, 9, 16, 12, 0).toISOString() },
     ],
   };
-  const report = buildReport(raw, now, { price24: 5000, price21: 4400 });
+  const report = buildReport({ ...raw, goldPrices: { price24: 5000, price21: 4400 } }, now);
 
   it('puts the date in words', () => {
     expect(report.date).toMatchObject({ iso: '2026-10-17', weekday: 'Saturday', time: '20:00' });

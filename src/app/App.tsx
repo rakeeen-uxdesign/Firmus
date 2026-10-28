@@ -12,6 +12,7 @@ import { FloatingTimer } from '@/features/focus/FloatingTimer';
 import { AuthProvider, useAuth } from '@/features/auth/useAuth';
 import { PomodoroProvider } from '@/data/usePomodoro';
 import { DailyResetManager } from '@/app/DailyResetManager';
+import { GoldPriceRefresher } from '@/app/GoldPriceRefresher';
 import { DeviceCodeBanner } from '@/features/auth/DeviceCodeBanner';
 import { motion, AnimatePresence } from 'framer-motion';
 import '@/styles/global.css';
@@ -71,6 +72,7 @@ const AppRoutes: React.FC = () => {
     <div className="min-h-screen overflow-x-hidden">
       <CustomCursor />
       <DailyResetManager />
+      <GoldPriceRefresher />
 
       <AnimatePresence mode="wait">
         <Routes>

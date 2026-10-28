@@ -3,8 +3,8 @@
 Personal life-dashboard for Hamed — water, focus/Pomodoro, prayer & Quran, fitness,
 finance, calendar. React + TypeScript + Vite + Firebase (Firestore + Auth), deployed
 to GitHub Pages via `.github/workflows/deploy.yml` on push to `main`. A companion
-Discord bot lives in `backend/` (subscription reminders + gold prices — not deployed
-by the same workflow, run separately).
+Discord bot lives in `backend/` (Payit reminders, the Discord panels and the daily PDF
+report — not deployed by the same workflow, run separately).
 
 **Read `docs/ARCHITECTURE.md` before adding or moving a file.** This file is the
 short version; that one explains the layers and the reasoning.

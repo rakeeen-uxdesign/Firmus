@@ -170,8 +170,8 @@ outline.
 
 Separate package, not part of the web build. `bot.js` only wires things together and schedules them;
 the work lives in small modules: `src/features/` (`subscriptions` — the Payit reminders, honouring each plan's
-billing cycle; `cleanup`; `finance`/`water`/`focus` — the Discord panels; `report`), `src/lib/` (`goldPrices`,
-`alerts`, Firestore and prayer-time helpers) and `src/server.js` (the small HTTP API the web app calls).
+billing cycle; `cleanup`; `finance`/`water`/`focus` — the Discord panels; `report`), `src/lib/` (`alerts`,
+Firestore and prayer-time helpers) and `src/server.js` (the small HTTP API the web app calls).
 Their pure parts are tested from the root `npm run test:run`.
 
 `backend/src/features/report/` builds the **daily report**
@@ -181,6 +181,15 @@ tested from the root with `npm run test:run`), `render.js` draws the PDF, `send.
 sending anything: `npm run report:preview` (writes a PDF to the temp folder); `npm run report:send` sends it
 now. Anything in `data.js` that mirrors `src/domain/` must be changed in both places — except the salary, which both
 read from `src/constants/finance.json`.
+
+## Gold prices
+
+The web app is the only thing that calls the gold API. `app/GoldPriceRefresher.tsx` (mounted once, next to
+`DailyResetManager`) checks whether a Fajr or Maghrib has passed since the last fetch
+(`domain/finance/goldRefresh.ts`) and, if so, fetches once and stores the prices in Firestore (`gold_prices`).
+Everything else only reads that document — the Finance screens through `useGoldPrices`, the Discord bot
+straight from Firestore — so the prices stay put between refreshes and the API sees two calls a day. A refresh
+missed because the app was closed happens the next time it is open.
 
 ## Testing & commands
 

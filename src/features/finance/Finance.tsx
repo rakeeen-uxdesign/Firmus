@@ -50,8 +50,8 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
   const [splitModal, setSplitModal] = useState<{ open: boolean; mode: 'income' | 'assign' }>({ open: false, mode: 'income' });
   const [thndrMoneyOpen, setThndrMoneyOpen] = useState(false);
   const [debtModal, setDebtModal] = useState<{ open: boolean; debt: Debt | null; type: Debt['type'] }>({ open: false, debt: null, type: 'owed_to_me' });
-  // Spot prices are cached; they're only re-fetched while the Gold tab is open.
-  const { prices: goldPrices, loading: loadingPrices } = useGoldPrices(tab === 'gold');
+  // Refreshed at Fajr and Maghrib by `GoldPriceRefresher`; this only reads them.
+  const goldPrices = useGoldPrices();
 
   useEffect(() => { document.title = 'Rakeeen — Finance'; }, []);
 
@@ -166,7 +166,7 @@ export const Finance: React.FC<FinanceProps> = ({ navigate }) => {
           />
         )}
         {tab === 'gold' && (
-          <GoldTab gold={gold ?? []} setGold={setGold} prices={goldPrices} loadingPrices={loadingPrices} privacyMode={privacyMode} />
+          <GoldTab gold={gold ?? []} setGold={setGold} prices={goldPrices} privacyMode={privacyMode} />
         )}
         {tab === 'thndr' && (
           <ThndrTab

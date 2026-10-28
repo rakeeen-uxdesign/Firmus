@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getDashboardValue, setDashboardValue } from '../lib/firestore.js';
 import { formatEGP } from '../lib/format.js';
-import { getGoldPrices } from '../lib/goldPrices.js';
 import { card, row, ButtonStyle } from '../lib/ui.js';
 import { futureFundOf } from './report/data.js';
 
@@ -73,16 +72,17 @@ export async function buildBankView(bankKey) {
 }
 
 export async function buildBucketsView() {
-  const [buckets, gold, thndr, thndrFlows] = await Promise.all([
+  const [buckets, gold, goldPrices, thndr, thndrFlows] = await Promise.all([
     getDashboardValue('finance_buckets', DEFAULT_BUCKETS),
     getDashboardValue('finance_gold', []),
+    getDashboardValue('gold_prices', null),
     getDashboardValue('finance_thndr', []),
     getDashboardValue('finance_thndr_flows', []),
   ]);
   const keys = Object.keys(BUCKET_LABELS);
   // The Future bucket holds cash only; the fund as a whole also counts the gold and Thndr —
   // the same total the Finance screen shows beside it.
-  const future = futureFundOf({ buckets, gold, thndr, thndrFlows }, getGoldPrices());
+  const future = futureFundOf({ buckets, gold, goldPrices, thndr, thndrFlows });
   return {
     embeds: [card({
       domain: 'finance',

@@ -144,9 +144,9 @@ export const goldValueOf = (gold, prices) =>
   prices ? sumOf(gold || [], (g) => g.quantity * (g.carat === 24 ? prices.price24 : prices.price21)) : 0;
 
 /** The Future fund in its three forms: the bucket's cash, the gold held, and the Thndr portfolio. */
-export function futureFundOf(raw, goldPrices, now = new Date()) {
+export function futureFundOf(raw, now = new Date()) {
   const cash = Number(raw.buckets?.mustaqbal) || 0;
-  const gold = goldValueOf(raw.gold, goldPrices);
+  const gold = goldValueOf(raw.gold, raw.goldPrices);
   const thndr = buildThndr(raw.thndr, raw.thndrFlows, now)?.value || 0;
   return { cash, gold, thndr, total: cash + gold + thndr };
 }
@@ -180,7 +180,7 @@ function summariseToday(logs, now) {
   return { deposits: total('deposit'), withdrawals: total('withdraw'), entries: movements.slice(0, 8) };
 }
 
-export function buildFinance(raw, now, goldPrices) {
+export function buildFinance(raw, now) {
   const banks = Object.entries(BANK_LABELS).map(([key, label]) => ({ label, balance: Number(raw.banks?.[key]) || 0 }));
   const buckets = Object.entries(BUCKET_LABELS).map(([key, label]) => ({ key, label, balance: Number(raw.buckets?.[key]) || 0 }));
   const banksTotal = sum(raw.banks);
@@ -190,9 +190,9 @@ export function buildFinance(raw, now, goldPrices) {
 
   return {
     banks, banksTotal, buckets, bucketsTotal, free: banksTotal - bucketsTotal,
-    future: futureFundOf(raw, goldPrices, now),
+    future: futureFundOf(raw, now),
     thndr: buildThndr(raw.thndr, raw.thndrFlows, now),
-    goldValue: goldValueOf(raw.gold, goldPrices),
+    goldValue: goldValueOf(raw.gold, raw.goldPrices),
     share: { salary: MONTHLY_SALARY, monthlySubs, amount: MONTHLY_SALARY - monthlySubs },
     upcoming: upcomingRenewals(subs, now),
     debts: summariseDebts(raw.debts || []),
@@ -257,10 +257,10 @@ export function buildHighlights({ water, focus, finance }) {
 }
 
 /** Everything the report shows, from the raw dashboard values. */
-export function buildReport(raw, now = new Date(), goldPrices = null) {
+export function buildReport(raw, now = new Date()) {
   const water = buildWater(raw, now);
   const focus = buildFocus(raw, now);
-  const finance = buildFinance(raw, now, goldPrices);
+  const finance = buildFinance(raw, now);
   return {
     generatedAt: now,
     date: {

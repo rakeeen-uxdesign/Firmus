@@ -9,11 +9,10 @@ import { card } from '../../lib/ui.js';
  *
  * @param {import('discord.js').Client} client
  * @param {string} channelId
- * @param {() => ({price24: number, price21: number} | null)} getGoldPrices
  */
-export async function sendDailyReport(client, channelId, getGoldPrices = () => null) {
+export async function sendDailyReport(client, channelId) {
   const now = new Date();
-  const report = buildReport(await collectRaw(), now, getGoldPrices());
+  const report = buildReport(await collectRaw(), now);
   const pdf = await renderReportPdf(report);
 
   const { water, focus, finance } = report;

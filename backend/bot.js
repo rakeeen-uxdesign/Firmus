@@ -7,15 +7,12 @@ import { routeInteraction } from './src/discord/router.js';
 import { cleanChannel } from './src/features/cleanup.js';
 import { sendDailyReport } from './src/features/report/send.js';
 import { remindDueSubscriptions } from './src/features/subscriptions.js';
-import { fetchGoldPrices, getGoldPrices, goldPricesAreStale } from './src/lib/goldPrices.js';
 import { startServer } from './src/server.js';
 
 const CHANNEL_ID = CONTROL_CHANNEL_ID;
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || 'PUT_YOUR_BOT_TOKEN_HERE';
 const SERVER_PORT = Number(process.env.WEBHOOK_PORT || 3001);
 const TIME_ZONE = { timezone: 'Africa/Cairo' };
-const GOLD_FETCH_HOURS = [11, 18, 23];
-const GOLD_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 const LOGIN_RETRY_MS = 30_000;
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -49,7 +46,7 @@ client.once('clientReady', async () => {
     console.log(`🧹 Cleaned the channel: ${await cleanChannel(channel)} messages removed`);
   }));
   cron.schedule('* * * * *', guarded('Payit reminders', () => remindDueSubscriptions(client, CHANNEL_ID)));
-  cron.schedule('0 20 * * *', guarded('Daily report', () => sendDailyReport(client, CHANNEL_ID, getGoldPrices)), TIME_ZONE);
+  cron.schedule('0 20 * * *', guarded('Daily report', () => sendDailyReport(client, CHANNEL_ID)), TIME_ZONE);
   console.log('⏰ Scheduled: channel cleanup 02:00 · Payit reminders every minute · daily report 20:00 (Cairo)');
 });
 
@@ -63,10 +60,5 @@ function loginWithRetry() {
 }
 loginWithRetry();
 
-// The HTTP API and the gold prices don't need Discord, so they start regardless of the login.
-startServer(SERVER_PORT, () => {
-  console.log(`🌐 Webhook server running on port ${SERVER_PORT}`);
-  for (const hour of GOLD_FETCH_HOURS) cron.schedule(`0 ${hour} * * *`, fetchGoldPrices, TIME_ZONE);
-  console.log(`💰 Gold prices fetched daily at ${GOLD_FETCH_HOURS.join(', ')} (Cairo)`);
-  if (goldPricesAreStale(GOLD_MAX_AGE_MS)) fetchGoldPrices();
-});
+// The HTTP API doesn't need Discord, so it starts regardless of the login.
+startServer(SERVER_PORT, () => console.log(`🌐 Webhook server running on port ${SERVER_PORT}`));

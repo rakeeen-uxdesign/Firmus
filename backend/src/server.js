@@ -1,8 +1,7 @@
 import express from 'express';
-import { getGoldPrices } from './lib/goldPrices.js';
 import { getSubscriptions, replaceSubscriptions } from './features/subscriptions.js';
 
-// The small HTTP API the web app talks to: gold prices to read, the Payit list to push edits to.
+// The small HTTP API the web app talks to: it pushes Payit edits here so reminders stay current.
 
 /** Starts listening; `onListening` runs once the port is open. */
 export function startServer(port, onListening) {
@@ -17,7 +16,6 @@ export function startServer(port, onListening) {
   });
 
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
-  app.get('/api/gold-prices', (_req, res) => res.json(getGoldPrices()));
   app.post('/api/subscriptions/sync', (req, res) => {
     if (Array.isArray(req.body)) {
       replaceSubscriptions(req.body);

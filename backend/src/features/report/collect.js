@@ -4,7 +4,7 @@ import { getDashboardValue } from '../../lib/firestore.js';
 export async function collectRaw() {
   const [
     glasses, hydrationHistory, dailyHistory, pomodoroWeek, pomodoroHistory, pomodoroLogs,
-    banks, buckets, gold, thndr, thndrFlows, subscriptions, debts, logs,
+    banks, buckets, gold, goldPrices, thndr, thndrFlows, subscriptions, debts, logs,
   ] = await Promise.all([
     getDashboardValue('hydration_glasses', 0),
     getDashboardValue('hydration_history', {}),
@@ -15,11 +15,12 @@ export async function collectRaw() {
     getDashboardValue('finance_banks', {}),
     getDashboardValue('finance_buckets', {}),
     getDashboardValue('finance_gold', []),
+    getDashboardValue('gold_prices', null),   // refreshed at Fajr and Maghrib by the web app
     getDashboardValue('finance_thndr', []),
     getDashboardValue('finance_thndr_flows', []),
     getDashboardValue('finance_subscriptions', []),
     getDashboardValue('finance_debts', []),
     getDashboardValue('finance_logs', []),
   ]);
-  return { glasses, hydrationHistory, dailyHistory, pomodoroWeek, pomodoroHistory, pomodoroLogs, banks, buckets, gold, thndr, thndrFlows, subscriptions, debts, logs };
+  return { glasses, hydrationHistory, dailyHistory, pomodoroWeek, pomodoroHistory, pomodoroLogs, banks, buckets, gold, goldPrices, thndr, thndrFlows, subscriptions, debts, logs };
 }

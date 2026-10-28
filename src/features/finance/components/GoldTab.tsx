@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AppModal } from '@/ui/AppModal';
 import { formatEGP } from '@/domain/finance/money';
 import { removeById, upsertById } from '@/domain/finance/collections';
+import type { StoredGoldPrices } from '@/domain/finance/goldRefresh';
 import { goldAssetValue, goldSummary, type GoldPrices } from '@/domain/finance/insights';
 import type { GoldAsset } from '@/domain/finance/types';
 import { AnimatedValue, MaskedValue } from '@/features/finance/components/visuals';
@@ -11,6 +12,13 @@ import { ActionButton } from '@/features/finance/components/ActionButton';
 import { captionLabel } from '@/features/finance/components/labels';
 
 type Carat = 24 | 21;
+
+/** When the prices were fetched, as "2026-10-28 06:10". */
+const updatedAt = (epochMs: number) => {
+  const d = new Date(epochMs);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}`;
+};
 
 /** Add and edit share one form: pass `initial` to edit. */
 const GoldModal: React.FC<{
@@ -78,10 +86,10 @@ const GoldModal: React.FC<{
 export const GoldTab: React.FC<{
   gold: GoldAsset[];
   setGold: (next: GoldAsset[]) => Promise<void>;
-  prices: GoldPrices | null;
-  loadingPrices: boolean;
+  /** The spot prices and when they were fetched; null before the first fetch. */
+  prices: StoredGoldPrices | null;
   privacyMode: boolean;
-}> = ({ gold, setGold, prices, loadingPrices, privacyMode }) => {
+}> = ({ gold, setGold, prices, privacyMode }) => {
   const [modal, setModal] = useState<{ open: boolean; asset: GoldAsset | null }>({ open: false, asset: null });
   const summary = goldSummary(gold, prices);
 
@@ -115,16 +123,7 @@ export const GoldTab: React.FC<{
 
         <div className="brutalist-card no-lift bg-paper-dark p-6">
           <p className={`${captionLabel} mb-4`}>Spot / gram</p>
-          {loadingPrices ? (
-            <div className="space-y-3">
-              {['24K', '21K'].map((k) => (
-                <div key={k} className="flex justify-between items-center">
-                  <span className="font-mono-main text-xs font-bold text-ink/25">{k}</span>
-                  <div className="h-6 w-24 bg-ink/5 animate-pulse" />
-                </div>
-              ))}
-            </div>
-          ) : prices ? (
+          {prices ? (
             <div className="space-y-3">
               {([['24K', prices.price24], ['21K', prices.price21]] as const).map(([k, value]) => (
                 <div key={k} className="flex justify-between items-baseline">
@@ -132,9 +131,10 @@ export const GoldTab: React.FC<{
                   <AnimatedValue value={value} className="font-mono-main text-xl font-black" />
                 </div>
               ))}
+              <p className="font-mono-main text-[9px] text-ink/25 pt-1">Updated {updatedAt(prices.fetchedAt)}</p>
             </div>
           ) : (
-            <p className="font-mono-main text-xs text-ink/25">— offline</p>
+            <p className="font-mono-main text-xs text-ink/25">— not fetched yet</p>
           )}
         </div>
       </div>
